@@ -6,6 +6,7 @@ from aiohttp import web
 from giggityflix_peer.config import config
 from giggityflix_peer.services import screenshot_service
 from giggityflix_peer.services import stream_service
+from giggityflix_peer.services.config_service import config_service
 from giggityflix_peer.services.db_service import db_service
 
 logger = logging.getLogger(__name__)
@@ -38,6 +39,11 @@ class ApiServer:
 
         # Screenshots routes
         self.app.router.add_post("/api/screenshots/{luid}", self.handle_capture_screenshots)
+
+        # Settings routes
+        self.app.router.add_get("/api/settings", self.handle_get_settings)
+        self.app.router.add_get("/api/settings/{key}", self.handle_get_setting)
+        self.app.router.add_put("/api/settings/{key}", self.handle_update_setting)
 
         # Static files for screenshots
         self.app.router.add_static("/screenshots", Path(config.peer.data_dir) / "screenshots")
@@ -288,6 +294,90 @@ class ApiServer:
 
         except Exception as e:
             logger.error(f"Error handling capture screenshots request: {e}", exc_info=True)
+            return web.json_response({"error": str(e)}, status=500)
+            
+    # Settings route handlers
+            
+    async def handle_get_settings(self, request: web.Request) -> web.Response:
+        """Handle a request to get all settings."""
+        try:
+            # Get only editable settings
+            settings = await config_service.get_all(editable_only=True)
+            
+            # Convert to list for JSON response
+            settings_list = [
+                {
+                    "key": key,
+                    "value": value["value"],
+                    "value_type": value["value_type"],
+                    "description": value["description"],
+                    "last_updated": value["last_updated"]
+                }
+                for key, value in settings.items()
+            ]
+            
+            return web.json_response({"settings": settings_list})
+            
+        except Exception as e:
+            logger.error(f"Error handling get settings request: {e}", exc_info=True)
+            return web.json_response({"error": str(e)}, status=500)
+    
+    async def handle_get_setting(self, request: web.Request) -> web.Response:
+        """Handle a request to get a specific setting."""
+        try:
+            key = request.match_info["key"]
+            
+            # Get setting from config service
+            setting = await config_service.get_setting(key)
+            
+            if not setting:
+                return web.json_response({"error": f"Setting {key} not found"}, status=404)
+                
+            if not setting["editable"]:
+                return web.json_response({"error": f"Setting {key} is not editable"}, status=403)
+                
+            return web.json_response({
+                "key": key,
+                "value": setting["value"],
+                "value_type": setting["value_type"],
+                "description": setting["description"],
+                "last_updated": setting["last_updated"]
+            })
+            
+        except Exception as e:
+            logger.error(f"Error handling get setting request: {e}", exc_info=True)
+            return web.json_response({"error": str(e)}, status=500)
+    
+    async def handle_update_setting(self, request: web.Request) -> web.Response:
+        """Handle a request to update a setting."""
+        try:
+            key = request.match_info["key"]
+            
+            # Get request body
+            data = await request.json()
+            
+            if "value" not in data:
+                return web.json_response({"error": "Missing value in request"}, status=400)
+                
+            # Update setting
+            try:
+                await config_service.set(key, data["value"])
+            except ValueError as ve:
+                return web.json_response({"error": str(ve)}, status=400)
+                
+            # Get updated setting
+            setting = await config_service.get_setting(key)
+            
+            return web.json_response({
+                "key": key,
+                "value": setting["value"],
+                "value_type": setting["value_type"],
+                "description": setting["description"],
+                "last_updated": setting["last_updated"]
+            })
+            
+        except Exception as e:
+            logger.error(f"Error handling update setting request: {e}", exc_info=True)
             return web.json_response({"error": str(e)}, status=500)
 
 

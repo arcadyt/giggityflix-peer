@@ -250,20 +250,47 @@ class EdgeClient:
 
     async def handle_file_hash_request(self, request: pb2.FileHashRequest, request_id: str) -> None:
         """Handle a file hash request from the Edge Service."""
-        logger.info(f"Received file hash request for {request.catalog_uuid}")
+        from giggityflix_peer.scanner.media_scanner import calculate_file_hash
+        from giggityflix_peer.services.db_service import db_service
+        
+        logger.info(f"Received file hash request for {request.catalog_uuid} with hash types: {request.hash_types}")
 
         try:
-            # This would typically involve finding the file in the database and getting its hashes
-            # For now, we'll just send a placeholder response
-            logger.info(f"Processing hash request for catalog ID {request.catalog_uuid}")
+            # Find the media file by catalog ID
+            media_file = await db_service.get_media_file_by_catalog_id(request.catalog_uuid)
 
-            # TODO: Implement hash calculation logic
+            if not media_file:
+                logger.error(f"Media file not found for catalog ID {request.catalog_uuid}")
+                
+                response = pb2.PeerMessage(
+                    request_id=request_id,
+                    file_hash_response=pb2.FileHashResponse(
+                        catalog_uuid=request.catalog_uuid,
+                        error_message="Media file not found"
+                    )
+                )
+                await self._stream.write(response)
+                return
 
-            # Send success response with placeholder hashes
+            # Calculate the requested hashes on demand
             hashes = {}
             for algorithm in request.hash_types:
-                hashes[algorithm] = f"placeholder-hash-for-{algorithm}"
+                try:
+                    # Use existing hash if available
+                    if algorithm in media_file.hashes:
+                        hashes[algorithm] = media_file.hashes[algorithm]
+                    else:
+                        # Calculate hash on demand based on the algorithm requested by edge
+                        hashes[algorithm] = await calculate_file_hash(media_file.path, algorithm)
+                        
+                        # Store calculated hash in the database for future use
+                        media_file.hashes[algorithm] = hashes[algorithm]
+                        await db_service.update_media_file(media_file)
+                        
+                except Exception as e:
+                    logger.error(f"Error calculating {algorithm} hash for {media_file.path}: {e}")
 
+            # Send response with calculated hashes
             response = pb2.PeerMessage(
                 request_id=request_id,
                 file_hash_response=pb2.FileHashResponse(
@@ -271,8 +298,9 @@ class EdgeClient:
                     hashes=hashes
                 )
             )
-
             await self._stream.write(response)
+            
+            logger.info(f"Sent hash response for {request.catalog_uuid} with {len(hashes)} algorithms")
 
         except Exception as e:
             logger.error(f"Error processing hash request for {request.catalog_uuid}: {e}")
@@ -285,7 +313,6 @@ class EdgeClient:
                     error_message=str(e)
                 )
             )
-
             await self._stream.write(response)
 
     async def handle_file_remap_request(self, request: pb2.FileRemapRequest, request_id: str) -> None:

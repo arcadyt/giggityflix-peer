@@ -176,6 +176,18 @@ class Database:
         )
         """)
 
+        # Settings table
+        await self._conn.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            value_type TEXT NOT NULL,  -- 'str', 'int', 'bool', 'json', etc.
+            description TEXT,
+            editable BOOLEAN DEFAULT TRUE,
+            last_updated TEXT NOT NULL
+        )
+        """)
+        
         # Create indexes
         await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_media_files_catalog_id ON media_files (catalog_id)")
         await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_media_files_media_type ON media_files (media_type)")
