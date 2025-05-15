@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiosqlite
 
-from src import config
+from giggityflix_peer.config import config
 
 logger = logging.getLogger(__name__)
 

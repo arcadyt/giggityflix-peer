@@ -8,7 +8,7 @@ from rich import print
 from rich.console import Console
 from rich.panel import Panel
 
-from src import config
+from giggityflix_peer.config import config
 from giggityflix_peer.peer_app import peer_app
 from giggityflix_peer.utils.logging import setup_logging
 

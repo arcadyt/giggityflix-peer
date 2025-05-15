@@ -1,7 +1,7 @@
 import os
 from unittest import mock
 
-from src import AppConfig
+from giggityflix_peer.config import AppConfig
 
 
 def test_default_config():

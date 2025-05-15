@@ -2,12 +2,12 @@ import asyncio
 import logging
 import time
 import uuid
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.media import MediaPlayer, MediaRelay
 
-from src import config
+from giggityflix_peer.config import config
 from giggityflix_peer.models.media import MediaFile
 from giggityflix_peer.services.db_service import db_service
 

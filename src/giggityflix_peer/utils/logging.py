@@ -6,7 +6,7 @@ from pathlib import Path
 
 import colorlog
 
-from src import config
+from giggityflix_peer.config import config
 
 
 def setup_logging() -> None:

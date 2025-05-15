@@ -7,7 +7,7 @@ import pytest
 from watchdog.events import FileCreatedEvent, FileDeletedEvent, FileModifiedEvent, FileMovedEvent
 
 from giggityflix_peer.models.media import MediaFile, MediaStatus, MediaType
-from src import MediaScanner, get_media_type
+from giggityflix_peer.scanner.media_scanner import MediaScanner, get_media_type
 
 
 class TestMediaScanner:
@@ -250,7 +250,7 @@ class TestMediaScanner:
 @pytest.mark.asyncio
 async def test_calculate_file_hash():
     """Test the calculate_file_hash function."""
-    from src import calculate_file_hash
+    from giggityflix_peer import calculate_file_hash
     
     # Create a temporary file with known content
     with tempfile.NamedTemporaryFile() as tmp_file:

@@ -3,10 +3,10 @@ from pathlib import Path
 
 from aiohttp import web
 
-from src import config
+from giggityflix_peer.config import config
 from giggityflix_peer.services.db_service import db_service
-from src import screenshot_service
-from src import stream_service
+from giggityflix_peer.services import screenshot_service
+from giggityflix_peer.services import stream_service
 
 
 logger = logging.getLogger(__name__)

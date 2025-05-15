@@ -7,7 +7,7 @@ import giggityflix_grpc_peer.generated.peer_edge.peer_edge_pb2 as pb2
 import giggityflix_grpc_peer.generated.peer_edge.peer_edge_pb2_grpc as pb2_grpc
 import grpc
 
-from giggityflix_peer import config
+from giggityflix_peer.config import config
 from giggityflix_peer.models.media import MediaFile
 
 logger = logging.getLogger(__name__)
@@ -302,7 +302,7 @@ class EdgeClient:
     async def handle_screenshot_capture_request(self, request: pb2.ScreenshotCaptureRequest, request_id: str) -> None:
         """Handle a screenshot capture request from the Edge Service."""
         from giggityflix_peer.services.db_service import db_service
-        from src import screenshot_service
+        from giggityflix_peer.services.screenshot_service import screenshot_service
 
         logger.info(f"Received screenshot capture request for {request.catalog_uuid}")
 

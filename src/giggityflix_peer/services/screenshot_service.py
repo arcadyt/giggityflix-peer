@@ -7,7 +7,7 @@ from typing import List, Optional
 
 import aiohttp
 
-from src import config
+from giggityflix_peer.config import config
 from giggityflix_peer.models.media import MediaFile, Screenshot
 from giggityflix_peer.services.db_service import db_service
 

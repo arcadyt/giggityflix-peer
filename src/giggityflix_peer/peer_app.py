@@ -6,12 +6,12 @@ import uuid
 from pathlib import Path
 
 from giggityflix_peer.api.server import api_server
-from src import config
-from giggityflix_peer.db import db
-from src import MediaScanner
+from giggityflix_peer.config import config
+from giggityflix_peer.db.sqlite import db
+from giggityflix_peer.scanner.media_scanner import MediaScanner
 from giggityflix_peer.services.db_service import db_service
 from giggityflix_peer.services.edge_client import EdgeClient
-from src import stream_service
+from giggityflix_peer.services import stream_service
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 
 from giggityflix_peer.models.media import MediaFile, MediaStatus, MediaType
-from src import ScreenshotService
+from giggityflix_peer.services.screenshot_service import ScreenshotService
 
 
 class TestScreenshotService:

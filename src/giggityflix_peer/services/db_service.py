@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from giggityflix_peer.db import db
+from giggityflix_peer.db.sqlite import db
 from giggityflix_peer.models.media import MediaFile, MediaStatus, MediaType, Screenshot
 
 logger = logging.getLogger(__name__)

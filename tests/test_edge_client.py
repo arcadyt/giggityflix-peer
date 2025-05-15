@@ -2,7 +2,7 @@ import asyncio
 from unittest import mock
 
 import pytest
-from src import peer_edge_pb2 as pb2
+import giggityflix_grpc_peer.generated.peer_edge.peer_edge_pb2 as pb2
 
 from giggityflix_peer.models.media import MediaFile, MediaType, MediaStatus
 from giggityflix_peer.services.edge_client import EdgeClient
