@@ -3,9 +3,8 @@ import logging
 import uuid
 from typing import Dict, List
 
-import giggityflix_grpc_peer.generated.peer_edge.peer_edge_pb2 as pb2
-import giggityflix_grpc_peer.generated.peer_edge.peer_edge_pb2_grpc as pb2_grpc
 import grpc
+from giggityflix_grpc_peer import peer_edge_pb2 as pb2, peer_edge_pb2_grpc as pb2_grpc
 
 from giggityflix_peer.config import config
 from giggityflix_peer.models.media import MediaFile

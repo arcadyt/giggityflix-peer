@@ -16,11 +16,11 @@ class MediaType(str, Enum):
 
 class MediaStatus(str, Enum):
     """Status of a media file in the system."""
-    PENDING = "pending"     # File found but not yet processed
-    PROCESSING = "processing"   # Currently being processed
-    READY = "ready"         # Processed and ready for streaming
-    ERROR = "error"         # Error occurred during processing
-    DELETED = "deleted"     # File no longer exists
+    PENDING = "pending"  # File found but not yet processed
+    PROCESSING = "processing"  # Currently being processed
+    READY = "ready"  # Processed and ready for streaming
+    ERROR = "error"  # Error occurred during processing
+    DELETED = "deleted"  # File no longer exists
 
 
 class MediaFile(BaseModel):
@@ -32,12 +32,12 @@ class MediaFile(BaseModel):
     size_bytes: int
     media_type: MediaType
     status: MediaStatus = MediaStatus.PENDING
-    
+
     # File metadata
     created_at: datetime = Field(default_factory=datetime.now)
     modified_at: Optional[datetime] = None
     last_accessed: Optional[datetime] = None
-    
+
     # Media metadata
     duration_seconds: Optional[float] = None
     width: Optional[int] = None
@@ -45,20 +45,20 @@ class MediaFile(BaseModel):
     codec: Optional[str] = None
     bitrate: Optional[int] = None
     framerate: Optional[float] = None
-    
+
     # Hashes for verification
     hashes: Dict[str, str] = Field(default_factory=dict)
-    
+
     # Streaming stats
     view_count: int = 0
     last_viewed: Optional[datetime] = None
-    
+
     # Screenshots
     screenshot_timestamps: List[float] = Field(default_factory=list)
-    
+
     # Error information
     error_message: Optional[str] = None
-    
+
     class Config:
         arbitrary_types_allowed = True
 
@@ -83,6 +83,6 @@ class Screenshot(BaseModel):
     width: int
     height: int
     created_at: datetime = Field(default_factory=datetime.now)
-    
+
     class Config:
         arbitrary_types_allowed = True
