@@ -26,6 +26,15 @@ class ConfigService:
             "http_port": ("8080", "int", "Port for the HTTP server", True),
             "extract_metadata": ("true", "bool", "Extract metadata from media files", True),
             "screenshot_cache_size_mb": ("100", "int", "Size of screenshot cache in MB", True),
+            
+            # gRPC connection settings
+            "edge_address": ("localhost:50051", "str", "Address of the Edge Service", True),
+            "use_tls": ("false", "bool", "Use TLS for gRPC connection", True),
+            "cert_path": ("", "str", "Path to TLS certificate file", True),
+            "grpc_timeout_sec": ("30", "int", "Timeout for gRPC requests in seconds", True),
+            "heartbeat_interval_sec": ("30", "int", "Interval for sending heartbeats in seconds", True),
+            "max_reconnect_attempts": ("5", "int", "Maximum number of reconnection attempts", True),
+            "reconnect_interval_sec": ("10", "int", "Initial interval between reconnection attempts in seconds", True),
         }
     
     async def initialize(self):

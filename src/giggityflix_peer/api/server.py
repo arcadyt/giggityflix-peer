@@ -35,6 +35,7 @@ class ApiServer:
         # Streaming routes
         self.app.router.add_post("/api/stream/{luid}", self.handle_create_stream)
         self.app.router.add_post("/api/stream/{session_id}/answer", self.handle_stream_answer)
+        self.app.router.add_post("/api/stream/{session_id}/ice", self.handle_ice_candidate)
         self.app.router.add_delete("/api/stream/{session_id}", self.handle_close_stream)
 
         # Screenshots routes

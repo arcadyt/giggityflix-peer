@@ -12,7 +12,7 @@ from giggityflix_peer.scanner.media_scanner_updated import MediaScanner
 from giggityflix_peer.services import stream_service
 from giggityflix_peer.services.config_service import config_service
 from giggityflix_peer.services.db_service import db_service
-from giggityflix_peer.services.edge_client import EdgeClient
+from giggityflix_peer.services.edge_client import edge_client
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,6 @@ class PeerApp:
         os.makedirs(self.data_dir, exist_ok=True)
 
         # Initialize components
-        self.edge_client = EdgeClient(self.peer_id)
         self.media_scanner = MediaScanner(db_service)
 
         # Control flags
@@ -56,7 +55,7 @@ class PeerApp:
         await config_service.initialize()
 
         # Connect to the Edge Service
-        edge_connected = await self.edge_client.connect()
+        edge_connected = await edge_client.connect()
         if not edge_connected:
             logger.warning("Failed to connect to Edge Service, continuing in offline mode")
 
@@ -99,7 +98,7 @@ class PeerApp:
         await self.media_scanner.stop()
 
         # Disconnect from the Edge Service
-        await self.edge_client.disconnect()
+        await edge_client.disconnect()
 
         # Close the database
         await db.close()
@@ -126,7 +125,7 @@ class PeerApp:
         # Update the catalog with the Edge Service
         if media_files:
             logger.info(f"Updating catalog with {len(media_files)} media files")
-            if await self.edge_client.update_catalog(media_files):
+            if await edge_client.update_catalog(media_files):
                 # Update the catalog IDs in the database
                 for media_file in media_files:
                     if media_file.catalog_id:
