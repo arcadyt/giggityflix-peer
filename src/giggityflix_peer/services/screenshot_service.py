@@ -1,203 +1,245 @@
 import io
 import logging
-import os
-import uuid
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Tuple, Optional
 
 import aiohttp
-
-from giggityflix_peer.config import config
-from giggityflix_peer.models.media import MediaFile, Screenshot
-from giggityflix_peer.services.db_service import db_service
+import cv2
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
-try:
-    # Try to import OpenCV for screenshot capture
-    import cv2
 
-    OPENCV_AVAILABLE = True
-except ImportError:
-    logger.warning("OpenCV not available, using placeholder screenshots")
-    OPENCV_AVAILABLE = False
+@dataclass
+class VideoMetadata:
+    """Video file metadata container"""
+    height: int
+    width: int
+    frame_rate: float
+    codec: str
+    frames: int
+    bit_rate: int
 
 
-class ScreenshotService:
-    """Service for capturing and managing screenshots."""
+class FrameQualityCalculator:
+    """Calculates quality metrics for video frames"""
 
-    def __init__(self):
-        """Initialize the screenshot service."""
-        self.screenshot_dir = Path(config.peer.data_dir) / "screenshots"
-        os.makedirs(self.screenshot_dir, exist_ok=True)
+    @staticmethod
+    def calculate_quality_score(frame_data: bytes) -> float:
+        """Calculate Laplacian variance score for a frame"""
+        np_array = np.frombuffer(frame_data, dtype=np.uint8)
+        frame = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
+        if frame is None:
+            return -1
 
-    async def capture_screenshots(self, media_file: MediaFile, quantity: int = 1) -> List[Screenshot]:
-        """Capture screenshots from a media file."""
-        if not media_file.path.exists():
-            logger.error(f"Media file does not exist: {media_file.path}")
-            return []
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        return cv2.Laplacian(gray, cv2.CV_64F).var()
 
-        if media_file.media_type.value != "video":
-            logger.error(f"Cannot capture screenshots from non-video file: {media_file.path}")
-            return []
+
+class VideoReader:
+    """Handles video file reading operations"""
+
+    @staticmethod
+    def get_property(video: cv2.VideoCapture, prop_id, default=None):
+        """Get property value from video capture object"""
+        value = video.get(prop_id)
+        return value if value > 0 else default
+
+    @staticmethod
+    def extract_metadata(video: cv2.VideoCapture) -> VideoMetadata:
+        """Extract metadata from video file"""
+        fourcc_int = int(VideoReader.get_property(video, cv2.CAP_PROP_FOURCC))
+        codec = VideoReader._decode_fourcc(fourcc_int)
+
+        return VideoMetadata(
+            height=int(VideoReader.get_property(video, cv2.CAP_PROP_FRAME_HEIGHT)),
+            width=int(VideoReader.get_property(video, cv2.CAP_PROP_FRAME_WIDTH)),
+            frame_rate=VideoReader.get_property(video, cv2.CAP_PROP_FPS),
+            codec=codec,
+            frames=int(VideoReader.get_property(video, cv2.CAP_PROP_FRAME_COUNT)),
+            bit_rate=int(VideoReader.get_property(video, cv2.CAP_PROP_BITRATE))
+        )
+
+    @staticmethod
+    def _decode_fourcc(fourcc_int: int) -> Optional[str]:
+        """Decode FourCC codec identifier"""
+        if fourcc_int == 0:
+            return None
 
         try:
-            # Determine the screenshot timestamps
-            timestamps = self._calculate_screenshot_timestamps(media_file, quantity)
+            return fourcc_int.to_bytes(4, 'little').decode('ascii').strip('\0')
+        except (ValueError, UnicodeDecodeError):
+            return f"codec-{fourcc_int}"
 
-            screenshots = []
-            for i, timestamp in enumerate(timestamps):
-                # Generate a unique ID for the screenshot
-                screenshot_id = str(uuid.uuid4())
 
-                # Define the screenshot path
-                screenshot_path = self.screenshot_dir / f"{media_file.luid}_{int(timestamp)}_{screenshot_id}.jpg"
+class FramePositionCalculator:
+    """Calculates optimal frame positions for extraction"""
 
-                # Capture the screenshot
-                success, width, height = await self._capture_screenshot(media_file.path, screenshot_path, timestamp)
-
-                if success:
-                    # Create the screenshot object
-                    screenshot = Screenshot(
-                        id=screenshot_id,
-                        media_luid=media_file.luid,
-                        timestamp=timestamp,
-                        path=screenshot_path,
-                        width=width,
-                        height=height
-                    )
-
-                    # Add to the result list
-                    screenshots.append(screenshot)
-
-                    # Save to the database
-                    await db_service.add_screenshot(screenshot)
-
-            return screenshots
-
-        except Exception as e:
-            logger.error(f"Error capturing screenshots: {e}", exc_info=True)
+    @staticmethod
+    def calculate_frame_positions(start_frame: int, usable_frames: int, quantity: int) -> List[int]:
+        """Calculate evenly distributed frame positions"""
+        if quantity <= 0:
             return []
 
-    async def upload_screenshots(self, screenshots: List[Screenshot], upload_endpoint: str, upload_token: str) -> bool:
-        """Upload screenshots to the specified endpoint."""
+        if usable_frames <= 0:
+            return [start_frame]
+
+        if quantity == 1:
+            return [start_frame + (usable_frames // 2)]
+
+        return [
+            start_frame + int(usable_frames * i / (quantity - 1))
+            for i in range(quantity)
+        ]
+
+    @staticmethod
+    def calculate_quality_radius(positions: List[int], frame_rate: float) -> int:
+        """Determine optimal search radius based on positions and frame rate"""
+        distances = [positions[i + 1] - positions[i] for i in range(len(positions) - 1)] if len(positions) > 1 else []
+        min_distance = min(distances) if distances else float('inf')
+
+        return min(int(frame_rate), min_distance // 2) if min_distance != float('inf') else int(frame_rate)
+
+    @staticmethod
+    def get_valid_frame_range(target_pos: int, radius: int, total_frames: int) -> Tuple[int, int]:
+        """Calculate valid frame range within video bounds"""
+        start_pos = max(0, target_pos - radius)
+        end_pos = min(total_frames - 1, target_pos + radius)
+        return start_pos, end_pos
+
+
+class ScreenshotUploader:
+    """Handles screenshot upload operations"""
+
+    @staticmethod
+    async def upload_screenshots(screenshots: List[bytes], upload_endpoint: str, upload_token: str) -> bool:
+        """Upload screenshots to remote endpoint"""
         if not screenshots:
             logger.warning("No screenshots to upload")
             return False
 
         try:
-            # Set up the headers with the auth token
-            headers = {
-                "Authorization": f"Bearer {upload_token}"
-            }
+            headers = {"Authorization": f"Bearer {upload_token}"}
+            uploaded_count = 0
 
-            # Upload each screenshot
             async with aiohttp.ClientSession() as session:
-                for screenshot in screenshots:
-                    # Read the screenshot data
-                    with open(screenshot.path, "rb") as f:
-                        data = f.read()
-
-                    # Create the form data
+                for i, screenshot_data in enumerate(screenshots):
                     form = aiohttp.FormData()
                     form.add_field(
                         "file",
-                        io.BytesIO(data),
-                        filename=screenshot.path.name,
+                        io.BytesIO(screenshot_data),
+                        filename=f"screenshot_{i}.jpg",
                         content_type="image/jpeg"
                     )
 
-                    # Upload the screenshot
                     async with session.post(upload_endpoint, data=form, headers=headers) as response:
                         if response.status != 200:
-                            logger.error(f"Error uploading screenshot {screenshot.id}: {response.status}")
-                            return False
+                            logger.error(f"Error uploading screenshot {i}: {response.status}")
+                            continue
 
-                        logger.info(f"Uploaded screenshot {screenshot.id}")
+                        uploaded_count += 1
+                        logger.info(f"Uploaded screenshot {i} ({len(screenshot_data)} bytes)")
 
-            return True
+            return uploaded_count > 0
 
         except Exception as e:
             logger.error(f"Error uploading screenshots: {e}", exc_info=True)
             return False
 
-    def _calculate_screenshot_timestamps(self, media_file: MediaFile, quantity: int) -> List[float]:
-        """Calculate the timestamps for screenshots."""
-        if not media_file.duration_seconds:
-            # Assume a default duration if not available
-            duration = 60.0  # 1 minute
-        else:
-            duration = media_file.duration_seconds
 
-        # Skip the first and last 5% of the video
-        usable_duration = duration * 0.9
-        start_time = duration * 0.05
+class ScreenshotService:
+    """Service for capturing better-quality screenshots from video files"""
 
-        # Calculate evenly spaced timestamps
-        if quantity == 1:
-            # If only one screenshot is requested, take it from the middle
-            return [start_time + (usable_duration / 2)]
-        else:
-            # Otherwise, distribute them evenly
-            return [
-                start_time + (usable_duration * i / (quantity - 1))
-                for i in range(quantity)
-            ]
+    def __init__(self, max_workers: int = 16):
+        self.max_workers = max_workers
+        self._process_pool = ProcessPoolExecutor(max_workers=self.max_workers)
+        self._frame_quality_calculator = FrameQualityCalculator()
 
-    async def _capture_screenshot(self, video_path: Path, output_path: Path, timestamp: float) -> tuple[
-        bool, Optional[int], Optional[int]]:
-        """Capture a screenshot from a video at the specified timestamp."""
-        if not OPENCV_AVAILABLE:
-            # Create a placeholder image
-            # In a real implementation, we would use ffmpeg or another tool
-            # For now, just create an empty file
-            with open(output_path, "wb") as f:
-                f.write(b"placeholder")
+    async def capture_screenshots(self, file_path: str, quantity: int = 1) -> Tuple[List[bytes], VideoMetadata]:
+        """Capture optimized screenshots from video file"""
+        path = Path(file_path)
+        logger.info(f"Capturing {quantity} screenshots from: {path}")
 
-            return True, 640, 480
+        if not path.is_file():
+            logger.error(f"File does not exist: {path}")
+            raise FileNotFoundError(f"File not found: {path}")
 
         try:
-            # Open the video file
-            video = cv2.VideoCapture(str(video_path))
-
-            # Check if the video opened successfully
+            video = cv2.VideoCapture(str(path))
             if not video.isOpened():
-                logger.error(f"Could not open video file: {video_path}")
-                return False, None, None
+                raise ValueError(f"Could not open video file: {path}")
 
-            # Get the video frame rate
-            fps = video.get(cv2.CAP_PROP_FPS)
-            if fps <= 0:
-                fps = 30  # Default to 30 fps if not available
+            try:
+                metadata = VideoReader.extract_metadata(video)
+                logger.debug(f"Video metadata: {metadata}")
 
-            # Calculate the frame number from the timestamp
-            frame_number = int(timestamp * fps)
+                if metadata.frames <= 0:
+                    logger.warning(f"Frame count unavailable: {path}")
+                    return [], metadata
 
-            # Set the video position to the frame
-            video.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+                frame_positions = FramePositionCalculator.calculate_frame_positions(
+                    start_frame=max(1, int(metadata.frames * 0.05)),
+                    usable_frames=int(metadata.frames * 0.9),
+                    quantity=quantity
+                )
 
-            # Read the frame
-            success, frame = video.read()
+                quality_radius = FramePositionCalculator.calculate_quality_radius(
+                    frame_positions, metadata.frame_rate
+                )
+                screenshots = self._capture_best_frames(video, frame_positions, quality_radius, metadata.frames)
 
-            # Release the video
-            video.release()
-
-            if not success:
-                logger.error(f"Could not read frame at timestamp {timestamp} from {video_path}")
-                return False, None, None
-
-            # Get the frame dimensions
-            height, width = frame.shape[:2]
-
-            # Save the frame as a JPEG
-            cv2.imwrite(str(output_path), frame)
-
-            return True, width, height
+                logger.info(f"Captured {len(screenshots)} screenshots")
+                return screenshots, metadata
+            finally:
+                video.release()
 
         except Exception as e:
-            logger.error(f"Error capturing screenshot: {e}", exc_info=True)
-            return False, None, None
+            logger.error(f"Error capturing screenshots: {e}", exc_info=True)
+            raise
+
+    def _capture_best_frames(self, video: cv2.VideoCapture, positions: List[int],
+                             quality_radius: int, total_frames: int) -> List[bytes]:
+        """Capture best quality frame around each target position"""
+        screenshots = []
+
+        for frame_pos in positions:
+            start_pos, end_pos = FramePositionCalculator.get_valid_frame_range(
+                frame_pos, quality_radius, total_frames
+            )
+
+            if start_pos >= end_pos:
+                logger.warning(f"Invalid frame range at position {frame_pos}")
+                continue
+
+            video.set(cv2.CAP_PROP_POS_FRAMES, start_pos)
+
+            frame_jpgs = []
+            for _ in range(end_pos - start_pos + 1):
+                success, frame = video.read()
+                if not success or frame is None:
+                    break
+
+                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 95])
+                frame_jpgs.append(buffer.tobytes())
+
+            if not frame_jpgs:
+                continue
+
+            try:
+                scores = list(self._process_pool.map(
+                    FrameQualityCalculator.calculate_quality_score, frame_jpgs
+                ))
+                best_index = scores.index(max(scores)) if any(s > 0 for s in scores) else 0
+                screenshots.append(frame_jpgs[best_index])
+            except Exception as e:
+                logger.error(f"Error processing quality: {e}")
+                if frame_jpgs:
+                    screenshots.append(frame_jpgs[0])
+
+        return screenshots
 
 
-# Create a singleton service instance
+# Singleton instance
 screenshot_service = ScreenshotService()
