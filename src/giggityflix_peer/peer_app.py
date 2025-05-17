@@ -12,6 +12,7 @@ from giggityflix_peer.scanner.media_scanner_updated import MediaScanner
 from giggityflix_peer.services import stream_service
 from giggityflix_peer.services.config_service import config_service
 from giggityflix_peer.services.db_service import db_service
+from giggityflix_peer.services.disk_io_service import disk_io_service
 from giggityflix_peer.services.edge_client import edge_client
 
 logger = logging.getLogger(__name__)
@@ -53,6 +54,9 @@ class PeerApp:
         
         # Initialize configuration service
         await config_service.initialize()
+        
+        # Initialize disk I/O service
+        await disk_io_service.initialize()
 
         # Connect to the Edge Service
         edge_connected = await edge_client.connect()

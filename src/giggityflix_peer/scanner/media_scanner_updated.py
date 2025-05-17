@@ -13,6 +13,7 @@ from watchdog.observers import Observer
 
 from giggityflix_peer.models.media import MediaFile, MediaStatus, MediaType
 from giggityflix_peer.services.config_service import config_service
+from giggityflix_peer.services.disk_io_service import disk_io_service
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +42,13 @@ async def calculate_file_hash(file_path: Path, algorithm: str = 'md5') -> str:
     hash_obj = hashlib.new(algorithm)
     chunk_size = 8192  # 8KB chunks
 
-    # Open the file in binary mode
-    with open(file_path, 'rb') as f:
-        # Process the file in chunks to avoid loading large files into memory
-        for chunk in iter(lambda: f.read(chunk_size), b''):
-            hash_obj.update(chunk)
+    # Use disk I/O service to limit concurrent operations on the same drive
+    async with disk_io_service.operation(str(file_path)):
+        # Open the file in binary mode
+        with open(file_path, 'rb') as f:
+            # Process the file in chunks to avoid loading large files into memory
+            for chunk in iter(lambda: f.read(chunk_size), b''):
+                hash_obj.update(chunk)
 
     return hash_obj.hexdigest()
 
@@ -234,32 +237,37 @@ class MediaScanner:
 
                 logger.info(f"Scanning directory: {media_dir}")
 
-                for root, dirs, files in os.walk(media_dir):
-                    # Skip excluded directories
-                    dirs[:] = [d for d in dirs if Path(os.path.join(root, d)) not in self._exclude_dirs]
+                # Use disk I/O service for the directory listing operations
+                async with disk_io_service.operation(str(media_dir)):
+                    # Process this directory with limited concurrency
+                    for root, dirs, files in os.walk(media_dir):
+                        # Skip excluded directories
+                        dirs[:] = [d for d in dirs if Path(os.path.join(root, d)) not in self._exclude_dirs]
 
-                    for file in files:
-                        file_path = Path(os.path.join(root, file))
+                        for file in files:
+                            file_path = Path(os.path.join(root, file))
 
-                        # Check if the file has a supported extension
-                        if not any(file_path.suffix.lower() == ext for ext in self._include_extensions):
-                            continue
+                            # Check if the file has a supported extension
+                            if not any(file_path.suffix.lower() == ext for ext in self._include_extensions):
+                                continue
 
-                        total_files += 1
-                        str_path = str(file_path)
-                        processed_paths.add(str_path)
+                            total_files += 1
+                            str_path = str(file_path)
+                            processed_paths.add(str_path)
 
-                        if str_path in existing_paths:
-                            # File already exists in the database
-                            # Check if it needs to be updated
-                            existing_file = existing_paths[str_path]
+                            if str_path in existing_paths:
+                                # File already exists in the database
+                                # Check if it needs to be updated
+                                existing_file = existing_paths[str_path]
 
-                            if await self._check_file_changed(file_path, existing_file):
-                                await self._process_modified_file(file_path)
-                        else:
-                            # New file
-                            await self._process_new_file(file_path)
-                            new_files += 1
+                                # Use disk I/O service for file stat operations
+                                async with disk_io_service.operation(str_path):
+                                    if await self._check_file_changed(file_path, existing_file):
+                                        await self._process_modified_file(file_path)
+                            else:
+                                # New file
+                                await self._process_new_file(file_path)
+                                new_files += 1
 
             # Check for deleted files
             deleted_files = 0
@@ -286,14 +294,16 @@ class MediaScanner:
 
         # Check if the file size has changed
         try:
-            stat = file_path.stat()
-            if stat.st_size != existing_file.size_bytes:
-                return True
+            # Use disk I/O service for file stat operations
+            async with disk_io_service.operation(str(file_path)):
+                stat = file_path.stat()
+                if stat.st_size != existing_file.size_bytes:
+                    return True
 
-            # Check if the modification time has changed
-            mtime = datetime.fromtimestamp(stat.st_mtime)
-            if existing_file.modified_at and mtime > existing_file.modified_at:
-                return True
+                # Check if the modification time has changed
+                mtime = datetime.fromtimestamp(stat.st_mtime)
+                if existing_file.modified_at and mtime > existing_file.modified_at:
+                    return True
         except (OSError, IOError) as e:
             logger.error(f"Error checking file {file_path}: {e}")
             return False
@@ -307,10 +317,11 @@ class MediaScanner:
 
         try:
             # Get file details
-            stat = file_path.stat()
-            size_bytes = stat.st_size
-            created_at = datetime.fromtimestamp(stat.st_ctime)
-            modified_at = datetime.fromtimestamp(stat.st_mtime)
+            async with disk_io_service.operation(str(file_path)):
+                stat = file_path.stat()
+                size_bytes = stat.st_size
+                created_at = datetime.fromtimestamp(stat.st_ctime)
+                modified_at = datetime.fromtimestamp(stat.st_mtime)
 
             # Generate a local unique ID
             luid = str(uuid.uuid4())
@@ -341,6 +352,7 @@ class MediaScanner:
             # Don't pre-calculate all hashes, only calculate when Edge requests them
             hashes = {}
             try:
+                # Note: calculate_file_hash already uses disk_io_service
                 hashes['md5'] = await calculate_file_hash(file_path, 'md5')
             except Exception as e:
                 logger.error(f"Error calculating MD5 hash for {file_path}: {e}")
@@ -394,12 +406,14 @@ class MediaScanner:
                 return
 
             # Update file details
-            stat = file_path.stat()
-            media_file.size_bytes = stat.st_size
-            media_file.modified_at = datetime.fromtimestamp(stat.st_mtime)
+            async with disk_io_service.operation(str(file_path)):
+                stat = file_path.stat()
+                media_file.size_bytes = stat.st_size
+                media_file.modified_at = datetime.fromtimestamp(stat.st_mtime)
 
             # Update MD5 hash (don't calculate all hashes, only when requested)
             try:
+                # Note: calculate_file_hash already uses disk_io_service
                 media_file.hashes['md5'] = await calculate_file_hash(file_path, 'md5')
             except Exception as e:
                 logger.error(f"Error calculating MD5 hash for {file_path}: {e}")

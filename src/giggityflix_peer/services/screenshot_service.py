@@ -7,6 +7,7 @@ from typing import List
 import aiohttp
 import cv2
 
+from giggityflix_peer.services.disk_io_service import disk_io_service
 from giggityflix_peer.utils.video_file_utils import FramePositionCalculator, FrameQualityCalculator
 
 logger = logging.getLogger(__name__)
@@ -66,43 +67,45 @@ class ScreenshotService:
             logger.error(f"File does not exist: {path}")
             raise FileNotFoundError(f"File not found: {path}")
 
-        try:
-            video = cv2.VideoCapture(str(path))
-            if not video.isOpened():
-                raise ValueError(f"Could not open video file: {path}")
-
+        # Use disk I/O service to limit concurrent operations on the same drive
+        async with disk_io_service.operation(str(path)):
             try:
-                # Get basic video properties directly
-                frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
-                frame_rate = video.get(cv2.CAP_PROP_FPS)
+                video = cv2.VideoCapture(str(path))
+                if not video.isOpened():
+                    raise ValueError(f"Could not open video file: {path}")
 
-                if frames <= 0:
-                    logger.warning(f"Frame count unavailable: {path}")
-                    return []
+                try:
+                    # Get basic video properties directly
+                    frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+                    frame_rate = video.get(cv2.CAP_PROP_FPS)
 
-                # Calculate frame positions
-                frame_positions = FramePositionCalculator.calculate_frame_positions(
-                    start_frame=max(1, int(frames * 0.05)),
-                    usable_frames=int(frames * 0.9),
-                    quantity=quantity
-                )
+                    if frames <= 0:
+                        logger.warning(f"Frame count unavailable: {path}")
+                        return []
 
-                quality_radius = FramePositionCalculator.calculate_quality_radius(
-                    frame_positions, frame_rate
-                )
+                    # Calculate frame positions
+                    frame_positions = FramePositionCalculator.calculate_frame_positions(
+                        start_frame=max(1, int(frames * 0.05)),
+                        usable_frames=int(frames * 0.9),
+                        quantity=quantity
+                    )
 
-                # Capture the screenshots
-                screenshots = self._capture_best_frames(video, frame_positions, quality_radius, frames)
+                    quality_radius = FramePositionCalculator.calculate_quality_radius(
+                        frame_positions, frame_rate
+                    )
 
-                logger.info(f"Captured {len(screenshots)} screenshots")
-                return screenshots
+                    # Capture the screenshots
+                    screenshots = self._capture_best_frames(video, frame_positions, quality_radius, frames)
 
-            finally:
-                video.release()
+                    logger.info(f"Captured {len(screenshots)} screenshots")
+                    return screenshots
 
-        except Exception as e:
-            logger.error(f"Error capturing screenshots: {e}", exc_info=True)
-            raise
+                finally:
+                    video.release()
+
+            except Exception as e:
+                logger.error(f"Error capturing screenshots: {e}", exc_info=True)
+                raise
 
     def _capture_best_frames(self, video: cv2.VideoCapture, positions: List[int],
                              quality_radius: int, total_frames: int) -> List[bytes]:
