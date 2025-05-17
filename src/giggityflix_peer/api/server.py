@@ -6,7 +6,7 @@ from aiohttp import web
 from giggityflix_peer.config import config
 from giggityflix_peer.services import screenshot_service
 from giggityflix_peer.services import stream_service
-from giggityflix_peer.services.config_service import config_service
+from giggityflix_peer.services.config_service import config_service, get_drive_info_for_path
 from giggityflix_peer.services.db_service import db_service
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,12 @@ class ApiServer:
         self.app.router.add_get("/api/settings", self.handle_get_settings)
         self.app.router.add_get("/api/settings/{key}", self.handle_get_setting)
         self.app.router.add_put("/api/settings/{key}", self.handle_update_setting)
+        
+        # Drive configuration routes
+        self.app.router.add_get("/api/drives", self.handle_get_drives)
+        self.app.router.add_get("/api/drives/{drive_id}", self.handle_get_drive)
+        self.app.router.add_put("/api/drives/{drive_id}", self.handle_update_drive)
+        self.app.router.add_get("/api/drives/physical", self.handle_get_physical_drives)
 
         # Static files for screenshots
         self.app.router.add_static("/screenshots", Path(config.peer.data_dir) / "screenshots")
@@ -379,6 +385,107 @@ class ApiServer:
             
         except Exception as e:
             logger.error(f"Error handling update setting request: {e}", exc_info=True)
+            return web.json_response({"error": str(e)}, status=500)
+    
+    # Drive configuration route handlers
+    
+    async def handle_get_drives(self, request: web.Request) -> web.Response:
+        """Handle a request to get all drive configurations."""
+        try:
+            # Get all drive configurations
+            drive_configs = await config_service.get_all_drive_configs()
+            
+            # Convert to list for JSON response
+            drive_list = [
+                {
+                    "drive_id": drive_id,
+                    "physical_drive": config["physical_drive"],
+                    "concurrent_operations": config["concurrent_operations"],
+                    "last_updated": config["last_updated"]
+                }
+                for drive_id, config in drive_configs.items()
+            ]
+            
+            return web.json_response({"drives": drive_list})
+            
+        except Exception as e:
+            logger.error(f"Error handling get drives request: {e}", exc_info=True)
+            return web.json_response({"error": str(e)}, status=500)
+    
+    async def handle_get_drive(self, request: web.Request) -> web.Response:
+        """Handle a request to get a specific drive configuration."""
+        try:
+            drive_id = request.match_info["drive_id"]
+            
+            # Get drive configuration
+            config = await config_service.get_drive_config(drive_id)
+            
+            if not config:
+                return web.json_response({"error": f"Drive configuration not found: {drive_id}"}, status=404)
+                
+            return web.json_response({
+                "drive_id": config["drive_id"],
+                "physical_drive": config["physical_drive"],
+                "concurrent_operations": config["concurrent_operations"],
+                "last_updated": config["last_updated"]
+            })
+            
+        except Exception as e:
+            logger.error(f"Error handling get drive request: {e}", exc_info=True)
+            return web.json_response({"error": str(e)}, status=500)
+    
+    async def handle_update_drive(self, request: web.Request) -> web.Response:
+        """Handle a request to update a drive configuration."""
+        try:
+            drive_id = request.match_info["drive_id"]
+            
+            # Get request body
+            data = await request.json()
+            
+            if "concurrent_operations" not in data:
+                return web.json_response({"error": "Missing concurrent_operations in request"}, status=400)
+                
+            # Validate concurrent_operations
+            concurrent_operations = data["concurrent_operations"]
+            if not isinstance(concurrent_operations, int) or concurrent_operations < 1:
+                return web.json_response({"error": "concurrent_operations must be a positive integer"}, status=400)
+                
+            # Update drive configuration
+            await config_service.set_drive_config(drive_id, concurrent_operations)
+                
+            # Get updated configuration
+            config = await config_service.get_drive_config(drive_id)
+            
+            return web.json_response({
+                "drive_id": config["drive_id"],
+                "physical_drive": config["physical_drive"],
+                "concurrent_operations": config["concurrent_operations"],
+                "last_updated": config["last_updated"]
+            })
+            
+        except Exception as e:
+            logger.error(f"Error handling update drive request: {e}", exc_info=True)
+            return web.json_response({"error": str(e)}, status=500)
+    
+    async def handle_get_physical_drives(self, request: web.Request) -> web.Response:
+        """Handle a request to get physical drive mappings."""
+        try:
+            # Get physical drive mappings
+            physical_drives = await config_service.get_physical_drives()
+            
+            # Convert to list for JSON response
+            drive_list = [
+                {
+                    "physical_drive": physical_drive,
+                    "logical_drives": logical_drives
+                }
+                for physical_drive, logical_drives in physical_drives.items()
+            ]
+            
+            return web.json_response({"physical_drives": drive_list})
+            
+        except Exception as e:
+            logger.error(f"Error handling get physical drives request: {e}", exc_info=True)
             return web.json_response({"error": str(e)}, status=500)
 
 
