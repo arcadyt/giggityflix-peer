@@ -189,8 +189,8 @@ class TestScreenshotService:
         if not os.path.exists(file_path):
             pytest.skip(f"Test video file not found: {file_path}")
 
-        expected_qty = 30  # Use a smaller number for tests
-        screenshots, metadata = await screenshot_service.capture_screenshots(file_path, expected_qty)
+        expected_qty = 5
+        screenshots = await screenshot_service.capture_screenshots(file_path, expected_qty)
 
         # Don't use cv2.imshow in automated tests
         # Instead, verify the screenshots are valid JPEG data

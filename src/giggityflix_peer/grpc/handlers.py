@@ -11,7 +11,7 @@ from giggityflix_grpc_peer import (
 )
 from giggityflix_peer.models.media import MediaFile, MediaStatus
 from giggityflix_peer.services.db_service import db_service
-from giggityflix_peer.services.screenshot_service import screenshot_service
+from giggityflix_peer.services.screenshot_service import screenshot_service, ScreenshotUploader
 
 logger = logging.getLogger(__name__)
 
@@ -281,7 +281,7 @@ class EdgeMessageHandler:
     async def _handle_screenshot_capture_request(self, message: EdgeMessage) -> Optional[PeerMessage]:
         """
         Handles screenshot capture request.
-        
+
         Captures screenshots for the specified catalog ID and uploads them
         to the provided endpoint.
         """
@@ -291,31 +291,31 @@ class EdgeMessageHandler:
         quantity = request.quantity
         upload_token = request.upload_token
         upload_endpoint = request.upload_endpoint
-        
+
         logger.info(f"Processing screenshot capture request for {catalog_id}")
-        
+
         try:
             # Get the media file by catalog ID
             media_file = await db_service.get_media_file_by_catalog_id(catalog_id)
             if not media_file:
                 logger.warning(f"File with catalog ID {catalog_id} not found")
                 return None
-            
+
             # Capture screenshots
-            screenshots = await screenshot_service.capture_screenshots(media_file, quantity)
-            if not screenshots:
+            screenshot_data = await screenshot_service.capture_screenshots(media_file, quantity)
+            if not screenshot_data:
                 logger.warning(f"Failed to capture screenshots for {catalog_id}")
                 return None
-            
+
             # Upload screenshots
-            success = await screenshot_service.upload_screenshots(
-                screenshots, upload_endpoint, upload_token
+            success = await ScreenshotUploader.upload_screenshots(
+                screenshot_data, upload_endpoint, upload_token
             )
-            
+
             logger.info(f"Screenshot upload {'succeeded' if success else 'failed'} for {catalog_id}")
-            
+
         except Exception as e:
             logger.error(f"Error processing screenshot request for {catalog_id}: {e}")
-        
+
         # No response message defined for screenshot requests
         return None
