@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from typing import List, Optional, Tuple
 
@@ -35,11 +34,11 @@ class EdgeClient:
         if not self._initialized:
             # Create handler
             handler = EdgeMessageHandler()
-            
+
             # Create gRPC client
             self._client = GrpcEdgeClient(self.peer_id, handler)
             self._initialized = True
-        
+
         # Start the client
         return await self._client.start()
 
@@ -64,41 +63,41 @@ class EdgeClient:
         if not self._client:
             logger.error("Edge client not initialized")
             return False
-            
+
         try:
             # Filter out deleted files and files with no relative path
             valid_files = [f for f in media_files if f.relative_path and not f.status.value == "deleted"]
-            
+
             if not valid_files:
                 logger.warning("No valid files to announce")
                 return False
-                
+
             # Announce files
             logger.info(f"Announcing {len(valid_files)} files to edge service")
             catalog_ids = await self._client.announce_files(valid_files)
-            
+
             if not catalog_ids:
                 logger.warning("No catalog IDs received from edge service")
                 return False
-                
+
             # Update local database with catalog IDs
             updated_count = 0
             for media_file in valid_files:
                 if media_file.catalog_id:
                     await db_service.update_media_catalog_id(media_file.luid, media_file.catalog_id)
                     updated_count += 1
-                    
+
             logger.info(f"Updated {updated_count} files with catalog IDs")
-            
+
             # Announce full catalog
             all_media = await db_service.get_all_media_files()
             catalog_ids = [f.catalog_id for f in all_media if f.catalog_id and not f.status.value == "deleted"]
-            
+
             if catalog_ids:
                 await self._client.announce_catalog(catalog_ids)
-                
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Error updating catalog: {e}")
             return False
@@ -116,22 +115,22 @@ class EdgeClient:
         if not self._client:
             logger.error("Edge client not initialized")
             return None, None
-            
+
         try:
             # Get media file
             media_file = await db_service.get_media_file(media_luid)
             if not media_file:
                 logger.error(f"Media file not found: {media_luid}")
                 return None, None
-                
+
             # Check if media file has catalog ID
             if not media_file.catalog_id:
                 logger.error(f"Media file has no catalog ID: {media_luid}")
                 return None, None
-                
+
             # Create stream session
             return await self._client.create_stream_session(media_file.catalog_id)
-            
+
         except Exception as e:
             logger.error(f"Error creating stream session: {e}")
             return None, None
@@ -150,11 +149,11 @@ class EdgeClient:
         if not self._client:
             logger.error("Edge client not initialized")
             return False
-            
+
         return await self._client.send_sdp_answer(session_id, sdp)
 
-    async def send_ice_candidate(self, session_id: str, candidate: str, 
-                                sdp_mid: str, sdp_mline_index: int) -> bool:
+    async def send_ice_candidate(self, session_id: str, candidate: str,
+                                 sdp_mid: str, sdp_mline_index: int) -> bool:
         """
         Send ICE candidate for a WebRTC session.
         
@@ -170,7 +169,7 @@ class EdgeClient:
         if not self._client:
             logger.error("Edge client not initialized")
             return False
-            
+
         return await self._client.send_ice_candidate(session_id, candidate, sdp_mid, sdp_mline_index)
 
 

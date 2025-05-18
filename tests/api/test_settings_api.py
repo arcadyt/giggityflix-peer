@@ -1,9 +1,8 @@
 import json
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from aiohttp import web
 from aiohttp.test_utils import make_mocked_request
 
 from giggityflix_peer.api.server import ApiServer
@@ -194,6 +193,7 @@ class TestSettingsApi:
     @pytest.mark.asyncio
     async def test_handle_update_setting_missing_value(self, api_server):
         """Test updating a setting without providing a value."""
+
         # Mock the request json method
         async def mock_json():
             return {}

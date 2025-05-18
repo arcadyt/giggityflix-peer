@@ -5,10 +5,15 @@ import signal
 import uuid
 from pathlib import Path
 
+from giggityflix_peer.scanner.media_scanner_updated import MediaScanner
+
+from giggityflix_peer.api.router import api_router
 from giggityflix_peer.api.server import api_server
 from giggityflix_peer.config import config
 from giggityflix_peer.db.sqlite import db
-from giggityflix_peer.scanner.media_scanner_updated import MediaScanner
+# Import resource management components
+from giggityflix_peer.di import container
+from giggityflix_peer.resource_mgmt.resource_pool import ResourcePoolManager, MetricsCollector
 from giggityflix_peer.services import stream_service
 from giggityflix_peer.services.config_service import config_service
 from giggityflix_peer.services.db_service import db_service
@@ -39,6 +44,26 @@ class PeerApp:
         self._running = False
         self._stop_event = asyncio.Event()
 
+        # Initialize resource management
+        self._init_resource_management()
+
+    def _init_resource_management(self):
+        """Initialize resource management components."""
+        # Initialize metrics collector
+        metrics_collector = MetricsCollector(
+            enabled=True,
+            logger=lambda msg: logger.debug(msg)
+        )
+
+        # Initialize resource pool manager
+        resource_manager = ResourcePoolManager(
+            config=config.resource,
+            metrics_collector=metrics_collector
+        )
+
+        # Register in DI container
+        container.register(ResourcePoolManager, resource_manager)
+
     async def start(self) -> None:
         """Start the peer application."""
         if self._running:
@@ -50,7 +75,7 @@ class PeerApp:
 
         # Initialize the database
         await db.initialize()
-        
+
         # Initialize configuration service
         await config_service.initialize()
 
@@ -64,6 +89,9 @@ class PeerApp:
 
         # Start the stream service
         await stream_service.start()
+
+        # Register resource management API routes
+        api_server.app.include_router(api_router)
 
         # Start the API server
         await api_server.start()
@@ -99,6 +127,10 @@ class PeerApp:
 
         # Disconnect from the Edge Service
         await edge_client.disconnect()
+
+        # Clean up resource management
+        resource_manager = container.resolve(ResourcePoolManager)
+        resource_manager.shutdown()
 
         # Close the database
         await db.close()

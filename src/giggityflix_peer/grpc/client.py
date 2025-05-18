@@ -1,14 +1,14 @@
 import asyncio
 import logging
 import uuid
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import grpc
-
 from giggityflix_grpc_peer import (
     PeerEdgeServiceStub, EdgeMessage, PeerMessage, PeerWebRTCMessage, EdgeWebRTCMessage,
-    catalog, file_operations, media, webrtc
+    catalog, webrtc
 )
+
 from giggityflix_peer.models.media import MediaFile, MediaStatus
 from giggityflix_peer.services.config_service import config_service
 from .handlers import EdgeMessageHandler
@@ -39,7 +39,7 @@ class EdgeClient:
         """
         self.peer_id = peer_id
         self.handler = message_handler or EdgeMessageHandler()
-        
+
         # Connection parameters (will be loaded from config)
         self._edge_address = None
         self._use_tls = None
@@ -48,7 +48,7 @@ class EdgeClient:
         self._heartbeat_interval = None
         self._max_reconnect_attempts = None
         self._reconnect_interval = None
-        
+
         # Connection state
         self._channel = None
         self._stub = None
@@ -57,7 +57,7 @@ class EdgeClient:
         self._pending_requests = {}  # request_id -> Future
         self._config_watch_task = None
         self._config_version = None
-        
+
         # Tasks
         self._receive_task = None
         self._heartbeat_task = None
@@ -74,24 +74,24 @@ class EdgeClient:
         """
         # Reset stop event
         self._stop_event.clear()
-        
+
         # Load configuration
         await self._load_config()
-        
+
         # Start config watcher
         self._config_watch_task = asyncio.create_task(self._watch_config())
-        
+
         # Connect to edge service
         return await self.connect()
 
     async def stop(self) -> None:
         """Stop the edge client and disconnect from the edge service."""
         self._stop_event.set()
-        
+
         # Cancel tasks
         if self._config_watch_task and not self._config_watch_task.done():
             self._config_watch_task.cancel()
-            
+
         # Disconnect
         await self.disconnect()
 
@@ -104,14 +104,14 @@ class EdgeClient:
         """
         if self._connected:
             return True
-            
+
         try:
             # Ensure config is loaded
             if not self._edge_address:
                 await self._load_config()
-                
+
             logger.info(f"Connecting to edge service at {self._edge_address}")
-            
+
             # Create channel
             if self._use_tls and self._cert_path:
                 try:
@@ -140,7 +140,7 @@ class EdgeClient:
 
             # Start message receiver
             self._receive_task = asyncio.create_task(self._receive_messages())
-            
+
             # Start heartbeat task
             if self._heartbeat_interval > 0:
                 self._heartbeat_task = asyncio.create_task(self._send_heartbeats())
@@ -170,12 +170,12 @@ class EdgeClient:
             reconnect: Whether to attempt reconnection
         """
         self._connected = False
-        
+
         # Cancel tasks
         if self._receive_task and not self._receive_task.done():
             self._receive_task.cancel()
             self._receive_task = None
-            
+
         if self._heartbeat_task and not self._heartbeat_task.done():
             self._heartbeat_task.cancel()
             self._heartbeat_task = None
@@ -201,16 +201,17 @@ class EdgeClient:
             if not future.done():
                 future.set_exception(ConnectionError("Disconnected"))
         self._pending_requests.clear()
-        
+
         # Schedule reconnect if needed
         if reconnect and not self._stop_event.is_set():
             if self._reconnect_task and not self._reconnect_task.done():
                 self._reconnect_task.cancel()
-                
+
             if self._reconnect_attempts < self._max_reconnect_attempts:
                 self._reconnect_attempts += 1
                 backoff = min(self._reconnect_interval * (2 ** (self._reconnect_attempts - 1)), 300)  # Max 5 minutes
-                logger.info(f"Scheduling reconnect in {backoff} seconds (attempt {self._reconnect_attempts}/{self._max_reconnect_attempts})")
+                logger.info(
+                    f"Scheduling reconnect in {backoff} seconds (attempt {self._reconnect_attempts}/{self._max_reconnect_attempts})")
                 self._reconnect_task = asyncio.create_task(self._delayed_reconnect(backoff))
             else:
                 logger.error(f"Max reconnect attempts ({self._max_reconnect_attempts}) reached, giving up")
@@ -240,14 +241,14 @@ class EdgeClient:
             self._heartbeat_interval = await config_service.get("heartbeat_interval_sec", 30)
             self._max_reconnect_attempts = await config_service.get("max_reconnect_attempts", 5)
             self._reconnect_interval = await config_service.get("reconnect_interval_sec", 10)
-            
+
             # Get config version for change detection
             settings = await config_service.get_all()
-            self._config_version = hash(frozenset((k, str(v["value"])) for k, v in settings.items() 
-                                               if k in ["edge_address", "use_tls", "cert_path"]))
-            
+            self._config_version = hash(frozenset((k, str(v["value"])) for k, v in settings.items()
+                                                  if k in ["edge_address", "use_tls", "cert_path"]))
+
             logger.debug(f"Loaded configuration: edge_address={self._edge_address}, use_tls={self._use_tls}")
-            
+
         except Exception as e:
             logger.error(f"Error loading configuration: {e}")
             # Use defaults if config service fails
@@ -267,19 +268,19 @@ class EdgeClient:
                 settings = await config_service.get_all()
                 new_config_version = hash(frozenset((k, str(v["value"])) for k, v in settings.items()
                                                     if k in ["edge_address", "use_tls", "cert_path"]))
-                
+
                 if new_config_version != self._config_version:
                     logger.info("Connection configuration changed, reconnecting")
                     self._config_version = new_config_version
                     await self._load_config()
-                    
+
                     # Reconnect if already connected
                     if self._connected:
                         await self._cleanup(reconnect=True)
-                
+
                 # Wait before checking again
                 await asyncio.sleep(30)  # Check every 30 seconds
-                
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -323,10 +324,10 @@ class EdgeClient:
                     )
 
                     await self.send_message(message)
-                
+
                 # Wait for next heartbeat
                 await asyncio.sleep(self._heartbeat_interval)
-                
+
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -357,20 +358,20 @@ class EdgeClient:
         """
         try:
             request_id = message.request_id
-            
+
             # Check for pending request
             if request_id in self._pending_requests:
                 future = self._pending_requests.pop(request_id)
                 if not future.done():
                     future.set_result(message)
                 return
-            
+
             # Handle message with the message handler
             logger.debug(f"Processing edge message: {message.WhichOneof('payload')}")
             response = await self.handler.handle_message(message)
             if response:
                 await self.send_message(response)
-                
+
         except Exception as e:
             logger.error(f"Error processing message: {e}")
 
@@ -387,17 +388,17 @@ class EdgeClient:
         if not self._connected or not self._stream:
             logger.error("Not connected to edge service")
             return None
-        
+
         try:
             # Create future for response
             request_id = message.request_id
             response_future = asyncio.Future()
             self._pending_requests[request_id] = response_future
-            
+
             # Send message
             await self._stream.write(message)
             logger.debug(f"Sent message: {message.WhichOneof('payload')}")
-            
+
             # Wait for response
             try:
                 return await asyncio.wait_for(response_future, timeout=self._timeout)
@@ -406,7 +407,7 @@ class EdgeClient:
                 return None
             finally:
                 self._pending_requests.pop(request_id, None)
-                
+
         except Exception as e:
             logger.error(f"Error sending message: {e}")
             return None
@@ -424,11 +425,11 @@ class EdgeClient:
         if not self._connected:
             logger.error("Not connected to edge service")
             return None
-            
+
         try:
             # Send unary RPC request
             return await self._stub.WebRTCOperations(
-                message, 
+                message,
                 metadata=(('peer_id', self.peer_id),),
                 timeout=self._timeout
             )
@@ -451,7 +452,7 @@ class EdgeClient:
         if not catalog_ids:
             logger.warning("No catalog IDs to announce")
             return False
-            
+
         try:
             announcement = catalog.CatalogAnnouncementResponse(
                 catalog_ids=catalog_ids
@@ -464,7 +465,7 @@ class EdgeClient:
 
             response = await self.send_message(message)
             return response is not None
-            
+
         except Exception as e:
             logger.error(f"Error announcing catalog: {e}")
             return False
@@ -482,7 +483,7 @@ class EdgeClient:
         if not media_files:
             logger.warning("No files to announce")
             return []
-            
+
         try:
             # Convert to FileInfo objects
             file_infos = []
@@ -493,11 +494,11 @@ class EdgeClient:
                         size_bytes=media_file.size_bytes
                     )
                     file_infos.append(file_info)
-            
+
             if not file_infos:
                 logger.warning("No valid files to announce")
                 return []
-                
+
             # Create batch file offer
             request = catalog.FileOfferRequest(files=file_infos)
             message = PeerMessage(
@@ -507,20 +508,20 @@ class EdgeClient:
 
             # Send and wait for response
             response = await self.send_message(message)
-            
+
             # Process response
             catalog_ids = []
             if response and response.HasField('batch_file_offer_response'):
                 for file_info in response.batch_file_offer_response.files:
                     catalog_ids.append(file_info.catalog_id)
-                    
+
                     # Find corresponding media file and update catalog ID
                     for media_file in media_files:
                         if media_file.relative_path == file_info.relative_path:
                             media_file.catalog_id = file_info.catalog_id
-                            
+
             return catalog_ids
-            
+
         except Exception as e:
             logger.error(f"Error announcing files: {e}")
             return []
@@ -538,22 +539,22 @@ class EdgeClient:
         try:
             # Generate session ID
             session_id = str(uuid.uuid4())
-            
+
             # Create stream session request
             request = webrtc.StreamSessionRequest(
                 catalog_id=catalog_id,
                 session_id=session_id
             )
-            
+
             # Create WebRTC message
             message = EdgeWebRTCMessage(
                 request_id=str(uuid.uuid4()),
                 stream_session_request=request
             )
-            
+
             # Send message
             response = await self.send_webrtc_message(message)
-            
+
             if response and response.HasField('stream_session_response'):
                 if response.stream_session_response.success:
                     return session_id, None
@@ -565,7 +566,7 @@ class EdgeClient:
             else:
                 logger.warning("Invalid stream session response")
                 return None, None
-                
+
         except Exception as e:
             logger.error(f"Error creating stream session: {e}")
             return None, None
@@ -587,23 +588,23 @@ class EdgeClient:
                 session_id=session_id,
                 sdp=sdp
             )
-            
+
             # Create WebRTC message
             message = EdgeWebRTCMessage(
                 request_id=str(uuid.uuid4()),
                 sdp_answer=answer
             )
-            
+
             # Send message
             response = await self.send_webrtc_message(message)
             return response is not None
-            
+
         except Exception as e:
             logger.error(f"Error sending SDP answer: {e}")
             return False
 
-    async def send_ice_candidate(self, session_id: str, candidate: str, 
-                                sdp_mid: str, sdp_mline_index: int) -> bool:
+    async def send_ice_candidate(self, session_id: str, candidate: str,
+                                 sdp_mid: str, sdp_mline_index: int) -> bool:
         """
         Send ICE candidate for a WebRTC session.
         
@@ -624,17 +625,17 @@ class EdgeClient:
                 sdp_mid=sdp_mid,
                 sdp_m_line_index=sdp_mline_index
             )
-            
+
             # Create WebRTC message
             message = EdgeWebRTCMessage(
                 request_id=str(uuid.uuid4()),
                 ice_candidate=ice
             )
-            
+
             # Send message
             response = await self.send_webrtc_message(message)
             return response is not None
-            
+
         except Exception as e:
             logger.error(f"Error sending ICE candidate: {e}")
             return False

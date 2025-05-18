@@ -44,7 +44,7 @@ class StreamSession:
                     "sdpMid": candidate.sdpMid,
                     "sdpMLineIndex": candidate.sdpMLineIndex
                 })
-                
+
                 # Send ICE candidate to edge service
                 await edge_client.send_ice_candidate(
                     self.session_id,
@@ -193,14 +193,14 @@ class StreamService:
             # Create a session with the Edge Service if media has catalog ID
             session_id = None
             remote_sdp = None
-            
+
             if media_file.catalog_id:
                 # Use Edge Service to create session
                 result = await edge_client.create_stream_session(media_file.catalog_id)
                 if result:
                     session_id, remote_sdp = result
                     logger.info(f"Created edge stream session for {media_file.catalog_id}")
-            
+
             # If edge session failed or not available, generate local session ID
             if not session_id:
                 session_id = str(uuid.uuid4())
@@ -208,10 +208,10 @@ class StreamService:
 
             # Create a stream session
             session = StreamSession(session_id, media_file)
-            
+
             # Create a WebRTC offer
             offer = await session.create_offer()
-            
+
             # Send the offer to the Edge Service if remote SDP available
             if remote_sdp:
                 # Process remote SDP as an answer
@@ -249,13 +249,13 @@ class StreamService:
 
             # Handle the answer locally
             await session.handle_answer(session_description)
-            
+
             # Also send to Edge Service if needed
             if session.media_file.catalog_id:
                 await edge_client.send_sdp_answer(session_id, answer_sdp)
 
             logger.info(f"Handled answer for session {session_id}")
-            
+
             # Send any cached ICE candidates
             for ice in session.ice_candidates:
                 await edge_client.send_ice_candidate(
@@ -264,7 +264,7 @@ class StreamService:
                     ice["sdpMid"],
                     ice["sdpMLineIndex"]
                 )
-            
+
             # Clear cached candidates now that they're sent
             session.ice_candidates = []
 
@@ -274,8 +274,8 @@ class StreamService:
             logger.error(f"Error handling answer for session {session_id}: {e}", exc_info=True)
             return False
 
-    async def handle_ice_candidate(self, session_id: str, candidate: str, 
-                                 sdp_mid: str, sdp_mline_index: int) -> bool:
+    async def handle_ice_candidate(self, session_id: str, candidate: str,
+                                   sdp_mid: str, sdp_mline_index: int) -> bool:
         """Handle an ICE candidate for a session."""
         session = self.active_sessions.get(session_id)
         if not session:
@@ -285,13 +285,13 @@ class StreamService:
         try:
             # Process the ICE candidate locally
             await session.handle_ice_candidate(candidate, sdp_mid, sdp_mline_index)
-            
+
             # Also send to Edge Service if needed
             if session.media_file.catalog_id:
                 await edge_client.send_ice_candidate(session_id, candidate, sdp_mid, sdp_mline_index)
-                
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Error handling ICE candidate for {session_id}: {e}")
             return False

@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 
 from giggityflix_peer.models.media import MediaFile, MediaType
+from giggityflix_peer.resource_mgmt.annotations import io_bound
 from giggityflix_peer.services.db_service import db_service
 from giggityflix_peer.utils.video_file_utils import VideoReader
 
@@ -32,7 +33,7 @@ class MetadataService:
 
         try:
             # Extract metadata
-            metadata = VideoReader.extract_metadata(str(path))
+            metadata = await self._extract_metadata_with_io_bound(str(path))
             if not metadata:
                 logger.error(f"Failed to extract metadata from {path}")
                 return False
@@ -55,6 +56,11 @@ class MetadataService:
         except Exception as e:
             logger.error(f"Error extracting and updating metadata for {path}: {e}")
             return False
+
+    @io_bound(param_name='video_path')
+    def _extract_metadata_with_io_bound(self, video_path: str):
+        """Extract metadata from video file with IO-bound decoration."""
+        return VideoReader.extract_metadata(video_path)
 
 
 # Create a singleton service instance

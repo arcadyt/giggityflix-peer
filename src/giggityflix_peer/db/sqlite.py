@@ -187,7 +187,7 @@ class Database:
             last_updated TEXT NOT NULL
         )
         """)
-        
+
         # Create indexes
         await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_media_files_catalog_id ON media_files (catalog_id)")
         await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_media_files_media_type ON media_files (media_type)")

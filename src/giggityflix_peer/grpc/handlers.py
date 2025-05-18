@@ -1,15 +1,13 @@
-import asyncio
-import json
 import logging
-import uuid
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 from giggityflix_grpc_peer import (
     EdgeMessage, PeerMessage,
-    file_operations, media, catalog, commons
+    file_operations, catalog, commons
 )
-from giggityflix_peer.models.media import MediaFile, MediaStatus
+
+from giggityflix_peer.models.media import MediaStatus
 from giggityflix_peer.services.db_service import db_service
 from giggityflix_peer.services.screenshot_service import screenshot_service, ScreenshotUploader
 
@@ -22,7 +20,7 @@ class EdgeMessageHandler:
     async def handle_message(self, message: EdgeMessage) -> Optional[PeerMessage]:
         """Processes message from edge using strategy pattern."""
         logger.debug(f"Received message type: {message.WhichOneof('payload')}")
-        
+
         # Select handler based on message type
         if message.HasField('file_delete_request'):
             return await self._handle_file_delete_request(message)
@@ -50,15 +48,15 @@ class EdgeMessageHandler:
         request = message.file_delete_request
         request_id = message.request_id
         catalog_ids = list(request.catalog_ids)
-        
+
         logger.info(f"Processing file delete request for {len(catalog_ids)} files")
-        
+
         # Process each catalog ID
         responses = []
         for catalog_id in catalog_ids:
             success = True
             error_reason = None
-            
+
             try:
                 # Get the media file by catalog ID
                 media_file = await db_service.get_media_file_by_catalog_id(catalog_id)
@@ -67,17 +65,17 @@ class EdgeMessageHandler:
                     success = False
                     error_reason = commons.CatalogErrorReason.BAD_CATALOG_ID
                     continue
-                
+
                 # Mark as deleted in the database
                 media_file.status = MediaStatus.DELETED
                 await db_service.update_media_file(media_file)
                 logger.info(f"Marked file {catalog_id} as deleted: {media_file.path}")
-                
+
             except Exception as e:
                 logger.error(f"Error deleting file {catalog_id}: {e}")
                 success = False
                 error_reason = commons.CatalogErrorReason.PERMISSION_DENIED
-            
+
             # Create response for this catalog ID
             response = file_operations.FileDeleteResponse(
                 catalog_id=catalog_id,
@@ -85,16 +83,16 @@ class EdgeMessageHandler:
             )
             if error_reason is not None:
                 response.error = error_reason
-            
+
             responses.append(response)
-        
+
         # Return the first response (if any)
         if responses:
             return PeerMessage(
                 request_id=request_id,
                 file_delete_response=responses[0]
             )
-        
+
         return None
 
     async def _handle_file_hash_request(self, message: EdgeMessage) -> Optional[PeerMessage]:
@@ -108,13 +106,13 @@ class EdgeMessageHandler:
         request_id = message.request_id
         catalog_id = request.catalog_id
         hash_types = list(request.hash_types)
-        
+
         logger.info(f"Processing file hash request for {catalog_id} with hash types: {hash_types}")
-        
+
         success = True
         error_reason = None
         hashes = {}
-        
+
         try:
             # Get the media file by catalog ID
             media_file = await db_service.get_media_file_by_catalog_id(catalog_id)
@@ -129,7 +127,7 @@ class EdgeMessageHandler:
             else:
                 # Compute requested hashes
                 from giggityflix_peer.scanner.media_scanner_updated import calculate_file_hash
-                
+
                 for hash_type in hash_types:
                     try:
                         if hash_type in media_file.hashes:
@@ -139,20 +137,20 @@ class EdgeMessageHandler:
                             # Compute hash
                             hash_value = await calculate_file_hash(media_file.path, hash_type)
                             hashes[hash_type] = hash_value
-                            
+
                             # Update media file with new hash
                             media_file.hashes[hash_type] = hash_value
                             await db_service.update_media_file(media_file)
-                            
+
                     except Exception as e:
                         logger.error(f"Error computing {hash_type} hash for {catalog_id}: {e}")
                         # Continue with other hash types
-        
+
         except Exception as e:
             logger.error(f"Error processing hash request for {catalog_id}: {e}")
             success = False
             error_reason = commons.CatalogErrorReason.PERMISSION_DENIED
-        
+
         # Create response
         response = file_operations.FileHashResponse(
             catalog_id=catalog_id,
@@ -161,7 +159,7 @@ class EdgeMessageHandler:
         )
         if error_reason is not None:
             response.error = error_reason
-        
+
         return PeerMessage(
             request_id=request_id,
             file_hash_response=response
@@ -177,12 +175,12 @@ class EdgeMessageHandler:
         request_id = message.request_id
         old_catalog_id = request.old_catalog_id
         new_catalog_id = request.new_catalog_id
-        
+
         logger.info(f"Processing file remap request: {old_catalog_id} -> {new_catalog_id}")
-        
+
         success = True
         error_reason = None
-        
+
         try:
             # Get the media file by old catalog ID
             media_file = await db_service.get_media_file_by_catalog_id(old_catalog_id)
@@ -195,12 +193,12 @@ class EdgeMessageHandler:
                 media_file.catalog_id = new_catalog_id
                 await db_service.update_media_file(media_file)
                 logger.info(f"Remapped catalog ID: {old_catalog_id} -> {new_catalog_id}")
-        
+
         except Exception as e:
             logger.error(f"Error remapping catalog ID: {e}")
             success = False
             error_reason = commons.CatalogErrorReason.PERMISSION_DENIED
-        
+
         # Create file remap response (if expected)
         # This is not defined in the proto files, so we can return None
         return None
@@ -214,28 +212,28 @@ class EdgeMessageHandler:
         request_id = message.request_id
         response = message.batch_file_offer_response
         files = list(response.files)
-        
+
         logger.info(f"Processing batch file offer response with {len(files)} files")
-        
+
         for file_info in files:
             relative_path = file_info.relative_path
             catalog_id = file_info.catalog_id
-            
+
             try:
                 # Find media file by relative path
                 all_media = await db_service.get_all_media_files()
                 media_file = next((m for m in all_media if m.relative_path == relative_path), None)
-                
+
                 if media_file:
                     # Update catalog ID
                     await db_service.update_media_catalog_id(media_file.luid, catalog_id)
                     logger.info(f"Updated catalog ID for {relative_path}: {catalog_id}")
                 else:
                     logger.warning(f"Could not find media file with relative path: {relative_path}")
-            
+
             except Exception as e:
                 logger.error(f"Error updating catalog ID for {relative_path}: {e}")
-        
+
         # No response needed for this message type
         return None
 
@@ -246,30 +244,30 @@ class EdgeMessageHandler:
         Responds with a list of all catalog IDs known to this peer.
         """
         request_id = message.request_id
-        
+
         logger.info("Processing catalog announcement request")
-        
+
         try:
             # Get all media files with catalog IDs
             media_files = await db_service.get_all_media_files()
             catalog_ids = [
-                file.catalog_id for file in media_files 
+                file.catalog_id for file in media_files
                 if file.catalog_id and file.status != MediaStatus.DELETED
             ]
-            
+
             # Create response
             response = catalog.CatalogAnnouncementResponse(
                 catalog_ids=catalog_ids
             )
-            
+
             return PeerMessage(
                 request_id=request_id,
                 catalog_announcement=response
             )
-            
+
         except Exception as e:
             logger.error(f"Error processing catalog announcement request: {e}")
-            
+
             # Send empty response on error
             return PeerMessage(
                 request_id=request_id,
