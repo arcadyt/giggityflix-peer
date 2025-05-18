@@ -8,6 +8,7 @@ from giggityflix_peer.services import screenshot_service
 from giggityflix_peer.services import stream_service
 from giggityflix_peer.services.config_service import config_service, get_drive_info_for_path
 from giggityflix_peer.services.db_service import db_service
+from giggityflix_peer.services.disk_io_service import disk_io_service
 
 logger = logging.getLogger(__name__)
 
@@ -433,36 +434,39 @@ class ApiServer:
         except Exception as e:
             logger.error(f"Error handling get drive request: {e}", exc_info=True)
             return web.json_response({"error": str(e)}, status=500)
-    
+
     async def handle_update_drive(self, request: web.Request) -> web.Response:
         """Handle a request to update a drive configuration."""
         try:
             drive_id = request.match_info["drive_id"]
-            
+
             # Get request body
             data = await request.json()
-            
+
             if "concurrent_operations" not in data:
                 return web.json_response({"error": "Missing concurrent_operations in request"}, status=400)
-                
+
             # Validate concurrent_operations
             concurrent_operations = data["concurrent_operations"]
             if not isinstance(concurrent_operations, int) or concurrent_operations < 1:
                 return web.json_response({"error": "concurrent_operations must be a positive integer"}, status=400)
-                
+
             # Update drive configuration
             await config_service.set_drive_config(drive_id, concurrent_operations)
-                
+
+            # Update disk I/O service semaphore limits to apply the new configuration
+            await disk_io_service.update_semaphore_limits()
+
             # Get updated configuration
             config = await config_service.get_drive_config(drive_id)
-            
+
             return web.json_response({
                 "drive_id": config["drive_id"],
                 "physical_drive": config["physical_drive"],
                 "concurrent_operations": config["concurrent_operations"],
                 "last_updated": config["last_updated"]
             })
-            
+
         except Exception as e:
             logger.error(f"Error handling update drive request: {e}", exc_info=True)
             return web.json_response({"error": str(e)}, status=500)
