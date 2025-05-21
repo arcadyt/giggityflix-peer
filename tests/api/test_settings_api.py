@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from aiohttp.test_utils import make_mocked_request
 
-from giggityflix_peer.api.server import ApiServer
+from giggityflix_peer.old_api.server import ApiServer
 
 
 class TestSettingsApi:

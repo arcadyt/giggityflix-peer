@@ -8,8 +8,8 @@ from giggityflix_grpc_peer import (
 )
 
 from giggityflix_peer.models.media import MediaStatus
-from giggityflix_peer.services.db_service import db_service
-from giggityflix_peer.services.screenshot_service import screenshot_service, ScreenshotUploader
+from giggityflix_peer.old_services.db_service import db_service
+from giggityflix_peer.old_services.screenshot_service import screenshot_service, ScreenshotUploader
 
 logger = logging.getLogger(__name__)
 

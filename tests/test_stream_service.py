@@ -6,8 +6,8 @@ import pytest
 from aiortc import RTCSessionDescription
 
 from giggityflix_peer.models.media import MediaFile, MediaType, MediaStatus
-from giggityflix_peer.services.db_service import db_service
-from giggityflix_peer.services.stream_service import StreamService, StreamSession
+from giggityflix_peer.old_services.db_service import db_service
+from giggityflix_peer.old_services.stream_service import StreamService, StreamSession
 
 
 @pytest.fixture

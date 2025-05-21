@@ -13,7 +13,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from giggityflix_peer.models.media import MediaFile, MediaStatus, MediaType
-from giggityflix_peer.services.config_service import config_service
+from giggityflix_peer.old_services.config_service import config_service
 
 logger = logging.getLogger(__name__)
 

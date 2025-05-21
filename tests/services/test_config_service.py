@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from giggityflix_peer.services.config_service import ConfigService
+from giggityflix_peer.old_services.config_service import ConfigService
 
 
 class TestConfigService:

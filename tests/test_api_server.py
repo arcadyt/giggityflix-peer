@@ -5,7 +5,7 @@ from unittest import mock
 
 import pytest
 
-from giggityflix_peer.api.server import ApiServer
+from giggityflix_peer.old_api.server import ApiServer
 from giggityflix_peer.models.media import MediaFile, MediaStatus, MediaType, Screenshot
 
 

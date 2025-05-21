@@ -5,9 +5,9 @@ from unittest import mock
 import pytest
 
 from giggityflix_peer.config import config
-from giggityflix_peer.db.sqlite import Database
+from giggityflix_peer.old_db.sqlite import Database
 from giggityflix_peer.models.media import MediaFile, MediaStatus, MediaType
-from giggityflix_peer.services.db_service import DatabaseService
+from giggityflix_peer.old_services.db_service import DatabaseService
 
 
 @pytest.fixture

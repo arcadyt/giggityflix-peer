@@ -10,7 +10,7 @@ from giggityflix_grpc_peer import (
 )
 
 from giggityflix_peer.models.media import MediaFile, MediaStatus
-from giggityflix_peer.services.config_service import config_service
+from giggityflix_peer.old_services.config_service import config_service
 from .handlers import EdgeMessageHandler
 
 logger = logging.getLogger(__name__)
