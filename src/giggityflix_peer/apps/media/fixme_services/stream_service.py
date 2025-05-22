@@ -10,7 +10,7 @@ from aiortc.contrib.media import MediaPlayer, MediaRelay
 from giggityflix_peer.config import config
 from giggityflix_peer.models.media import MediaFile
 from giggityflix_peer.old_services.db_service import db_service
-from giggityflix_peer.old_services.edge_client import edge_client
+from giggityflix_peer.apps.media.fixme_grpc import edge_client
 
 logger = logging.getLogger(__name__)
 

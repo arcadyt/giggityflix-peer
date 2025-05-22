@@ -27,15 +27,15 @@ class DriveDetectorFactory:
         system = platform.system()
 
         if system == "Windows":
-            from giggityflix_mgmt_peer.apps.drive_detection.strategies.windows import WindowsDriveDetector
+            from giggityflix_peer.apps.drive_detection.strategies.windows import WindowsDriveDetector
             return WindowsDriveDetector()
         elif system == "Linux":
-            from giggityflix_mgmt_peer.apps.drive_detection.strategies.linux import LinuxDriveDetector
+            from giggityflix_peer.apps.drive_detection.strategies.linux import LinuxDriveDetector
             return LinuxDriveDetector()
         elif system == "Darwin":
-            from giggityflix_mgmt_peer.apps.drive_detection.strategies.macos import MacOSDriveDetector
+            from giggityflix_peer.apps.drive_detection.strategies.macos import MacOSDriveDetector
             return MacOSDriveDetector()
         else:
             # Return a fallback detector for unsupported platforms
-            from giggityflix_mgmt_peer.apps.drive_detection.strategies.fallback import FallbackDriveDetector
+            from giggityflix_peer.apps.drive_detection.strategies.fallback import FallbackDriveDetector
             return FallbackDriveDetector()

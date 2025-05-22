@@ -1,1 +1,1 @@
-# giggityflix_mgmt_peer.drive_pool.drive_api initialization
+# giggityflix_peer.drive_pool.drive_api initialization

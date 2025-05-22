@@ -2,7 +2,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from giggityflix_mgmt_peer.apps.drive_detection.interfaces.views import (
+from giggityflix_peer.apps.drive_detection.interfaces.views import (
     PhysicalDriveViewSet, PartitionViewSet
 )
 

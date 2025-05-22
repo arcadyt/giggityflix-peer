@@ -21,7 +21,7 @@ import inspect
 from pathlib import Path
 from typing import Any, Awaitable, Callable, ParamSpec, TypeVar, Union
 
-from giggityflix_mgmt_peer.core.resource_pool.manager import get_resource_pool_manager
+from giggityflix_peer.core.resource_pool.manager import get_resource_pool_manager
 
 P = ParamSpec("P")
 R = TypeVar("R")

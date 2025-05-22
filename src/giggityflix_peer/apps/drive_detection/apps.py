@@ -1,4 +1,3 @@
-import asyncio
 import logging
 import sys
 
@@ -9,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class DriveDetectionConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'giggityflix_mgmt_peer.apps.drive_detection'
+    name = 'giggityflix_peer.apps.drive_detection'
     label = 'drive_detection'
 
     def ready(self):
@@ -20,7 +19,7 @@ class DriveDetectionConfig(AppConfig):
 
         # Import here to avoid app registry not ready error
         try:
-            from giggityflix_mgmt_peer.apps.drive_detection import get_drive_service
+            from giggityflix_peer.apps.drive_detection import get_drive_service
 
             # Get the service instance
             drive_service = get_drive_service()

@@ -1,7 +1,7 @@
 """Domain interfaces for drive detection."""
 from typing import List, Optional, Protocol
 
-from giggityflix_mgmt_peer.apps.drive_detection.domain.models import PhysicalDrive, DriveMapping
+from giggityflix_peer.apps.drive_detection.domain.models import PhysicalDrive, DriveMapping
 
 
 class DriveRepositoryInterface(Protocol):

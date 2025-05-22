@@ -7,6 +7,8 @@ packages = [{ include = "giggityflix_peer", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
+django = "^4.2.0"
+djangorestframework = "^3.14.0"
 giggityflix-grpc-peer = { path = "../giggityflix-grpc-peer", develop = true }
 grpcio = "^1.71.0"
 aiohttp = "^3.9.1"

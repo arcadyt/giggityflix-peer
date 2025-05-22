@@ -25,7 +25,7 @@ def handle_log_level_change(sender, key, value, **kwargs):
     """Update logging configuration when log_level changes."""
     if key == "log_level" and value:
         import logging
-        logging.getLogger("giggityflix_mgmt_peer").setLevel(value)
+        logging.getLogger("giggityflix_peer").setLevel(value)
         logger.info(f"Set log level to {value}")
 
 

@@ -3,7 +3,7 @@ from django.db.models.signals import post_migrate
 
 
 class ConfigurationConfig(AppConfig):
-    name = 'giggityflix_mgmt_peer.apps.configuration'
+    name = 'giggityflix_peer.apps.configuration'
     label = 'configuration'
 
     def ready(self):

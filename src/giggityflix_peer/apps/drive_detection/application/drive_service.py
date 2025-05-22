@@ -2,9 +2,9 @@
 import logging
 from typing import Dict, List
 
-from giggityflix_mgmt_peer.apps.drive_detection.detection import DriveDetectorFactory
-from giggityflix_mgmt_peer.apps.drive_detection.domain.interfaces import DriveRepositoryInterface
-from giggityflix_mgmt_peer.apps.drive_detection.domain.models import DriveMapping, PhysicalDrive
+from giggityflix_peer.apps.drive_detection.detection import DriveDetectorFactory
+from giggityflix_peer.apps.drive_detection.domain.interfaces import DriveRepositoryInterface
+from giggityflix_peer.apps.drive_detection.domain.models import DriveMapping, PhysicalDrive
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -104,6 +104,6 @@ def get_drive_service() -> DriveApplicationService:
     """
     global _drive_service
     if _drive_service is None:
-        from giggityflix_mgmt_peer.apps.drive_detection.infrastructure.repositories import get_drive_repository
+        from giggityflix_peer.apps.drive_detection.infrastructure.repositories import get_drive_repository
         _drive_service = DriveApplicationService(get_drive_repository())
     return _drive_service

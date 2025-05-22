@@ -3,7 +3,7 @@ import asyncio
 from concurrent.futures import Future
 from typing import Any, Awaitable, Callable, List, Tuple, Union
 
-from giggityflix_mgmt_peer.core.resource_pool.manager import get_resource_pool_manager
+from giggityflix_peer.core.resource_pool.manager import get_resource_pool_manager
 
 Task = Union[Awaitable[Any], Tuple[Callable[..., Any], Tuple, dict]]
 

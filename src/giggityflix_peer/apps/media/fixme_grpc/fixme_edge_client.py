@@ -2,8 +2,8 @@ import logging
 from typing import List, Optional, Tuple
 
 from giggityflix_peer.config import config
-from giggityflix_peer.grpc.client import EdgeClient as GrpcEdgeClient
-from giggityflix_peer.grpc.handlers import EdgeMessageHandler
+from giggityflix_peer.apps.media.fixme_grpc.client import EdgeClient as GrpcEdgeClient
+from giggityflix_peer.apps.media.fixme_grpc.handlers import EdgeMessageHandler
 from giggityflix_peer.models.media import MediaFile
 from giggityflix_peer.old_services.db_service import db_service
 

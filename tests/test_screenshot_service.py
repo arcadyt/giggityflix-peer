@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from giggityflix_peer.models.media import MediaFile, MediaType, MediaStatus, Screenshot
-from giggityflix_peer.old_services.screenshot_service import ScreenshotService
+from giggityflix_peer.apps.media.fixme_services.screenshot_service import ScreenshotService
 
 
 @pytest.fixture

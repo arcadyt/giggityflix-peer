@@ -4,7 +4,7 @@ Configuration application for the Giggityflix Management Peer service.
 This package provides configuration management functionality.
 """
 
-default_app_config = 'giggityflix_mgmt_peer.apps.configuration.apps.ConfigurationConfig'
+default_app_config = 'giggityflix_peer.apps.configuration.apps.ConfigurationConfig'
 
 # DO NOT import models, services, or other Django components directly at module level
 

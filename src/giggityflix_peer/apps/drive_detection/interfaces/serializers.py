@@ -1,7 +1,7 @@
 """Serializers for drive detection."""
 from rest_framework import serializers
 
-from giggityflix_mgmt_peer.apps.drive_detection.infrastructure.orm import PhysicalDrive, Partition
+from giggityflix_peer.apps.drive_detection.infrastructure.orm import PhysicalDrive, Partition
 
 
 class PhysicalDriveSerializer(serializers.ModelSerializer):

@@ -7,7 +7,7 @@ import pytest
 from watchdog.events import FileCreatedEvent, FileDeletedEvent, FileModifiedEvent, FileMovedEvent
 
 from giggityflix_peer.models.media import MediaFile, MediaStatus, MediaType
-from giggityflix_peer.scanner.media_scanner import MediaScanner, get_media_type
+from giggityflix_peer.apps.media.media_scanner import MediaScanner, get_media_type
 
 
 class TestMediaScanner:

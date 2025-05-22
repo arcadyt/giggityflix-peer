@@ -20,8 +20,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'giggityflix_mgmt_peer.apps.configuration.apps.ConfigurationConfig',
-    'giggityflix_mgmt_peer.apps.drive_detection.apps.DriveDetectionConfig',
+    'giggityflix_peer.apps.configuration.apps.ConfigurationConfig',
+    'giggityflix_peer.apps.drive_detection.apps.DriveDetectionConfig',
+    'giggityflix_peer.apps.media.apps.MediaConfig',
 ]
 
 MIDDLEWARE = [
@@ -34,7 +35,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'giggityflix_mgmt_peer.urls'
+ROOT_URLCONF = 'giggityflix_peer.urls'
 
 TEMPLATES = [
     {
@@ -52,7 +53,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'giggityflix_mgmt_peer.wsgi.application'
+WSGI_APPLICATION = 'giggityflix_peer.wsgi.application'
 
 # Database - SQLite
 DATABASES = {
@@ -86,6 +87,8 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -95,6 +98,10 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
 }
+
+# Media scanning configuration
+MEDIA_DIRECTORIES = []  # Will be configured via Django admin
+MEDIA_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.mp3', '.flac', '.ogg', '.wav']
 
 # Logging
 LOGGING = {
@@ -110,7 +117,7 @@ LOGGING = {
         'level': 'INFO',
     },
     'loggers': {
-        'giggityflix_mgmt_peer': {
+        'giggityflix_peer': {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,

@@ -6,7 +6,7 @@ import sys
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'giggityflix_mgmt_peer.config.django_settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'giggityflix_peer.config.django_settings')
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

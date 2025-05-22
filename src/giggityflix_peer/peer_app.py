@@ -14,10 +14,10 @@ from giggityflix_peer.old_db.sqlite import db
 # Import resource management components
 from giggityflix_peer.di import container
 from giggityflix_peer.old_resource_mgmt.resource_pool import ResourcePoolManager, MetricsCollector
-from giggityflix_peer.old_services import stream_service
+from giggityflix_peer.apps.media.fixme_services import stream_service
 from giggityflix_peer.old_services.config_service import config_service
 from giggityflix_peer.old_services.db_service import db_service
-from giggityflix_peer.old_services.edge_client import edge_client
+from giggityflix_peer.apps.media.fixme_grpc import edge_client
 
 logger = logging.getLogger(__name__)
 

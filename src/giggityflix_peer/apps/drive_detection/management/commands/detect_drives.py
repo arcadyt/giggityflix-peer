@@ -2,7 +2,7 @@
 import logging
 from django.core.management.base import BaseCommand
 
-from giggityflix_mgmt_peer.apps.drive_detection import get_drive_service
+from giggityflix_peer.apps.drive_detection import get_drive_service
 
 logger = logging.getLogger(__name__)
 

@@ -2,11 +2,11 @@ from typing import List, Optional
 
 from django.db import transaction
 
-from giggityflix_mgmt_peer.apps.drive_detection.domain.models import DriveMapping
-from giggityflix_mgmt_peer.apps.drive_detection.domain.models import PhysicalDrive as DomainDrive
-from giggityflix_mgmt_peer.apps.drive_detection.infrastructure.orm import Partition as OrmPartition
-from giggityflix_mgmt_peer.apps.drive_detection.infrastructure.orm import PhysicalDrive as OrmDrive
-from giggityflix_mgmt_peer.apps.drive_detection.infrastructure.transformers import (
+from giggityflix_peer.apps.drive_detection.domain.models import DriveMapping
+from giggityflix_peer.apps.drive_detection.domain.models import PhysicalDrive as DomainDrive
+from giggityflix_peer.apps.drive_detection.infrastructure.orm import Partition as OrmPartition
+from giggityflix_peer.apps.drive_detection.infrastructure.orm import PhysicalDrive as OrmDrive
+from giggityflix_peer.apps.drive_detection.infrastructure.transformers import (
     domain_to_orm_drive, orm_to_domain_drive, orm_to_drive_mapping
 )
 
