@@ -5,16 +5,38 @@ import uuid
 from typing import List, Optional, Tuple
 
 import grpc
-from django.conf import settings
-from giggityflix_grpc_peer import (
-    PeerEdgeServiceStub, EdgeMessage, PeerMessage, PeerWebRTCMessage, EdgeWebRTCMessage,
-    catalog, webrtc
-)
+from giggityflix_peer.apps.configuration import services as config_service
 
+# Import domain models first, then try gRPC imports with fallback
 from ...domain.models import Media
-from .handlers import MediaGrpcHandlers
 
 logger = logging.getLogger(__name__)
+
+# Try to import gRPC components, handle gracefully if missing
+try:
+    from giggityflix_grpc_peer import (
+        PeerEdgeServiceStub, EdgeMessage, PeerMessage, PeerWebRTCMessage, EdgeWebRTCMessage,
+        catalog, webrtc
+    )
+    GRPC_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"gRPC protobuf modules not available: {e}")
+    GRPC_AVAILABLE = False
+    # Create dummy classes to prevent import errors
+    class PeerEdgeServiceStub: pass
+    class EdgeMessage: pass
+    class PeerMessage: pass
+    class EdgeWebRTCMessage: pass
+    class PeerWebRTCMessage: pass
+    class catalog: pass
+    class webrtc: pass
+
+try:
+    from .handlers import MediaGrpcHandlers
+except ImportError:
+    logger.warning("MediaGrpcHandlers not available")
+    class MediaGrpcHandlers:
+        async def handle_message(self, message): return None
 
 
 class MediaGrpcClient:
@@ -33,17 +55,21 @@ class MediaGrpcClient:
 
     async def connect(self) -> bool:
         """Connect to edge service."""
+        if not GRPC_AVAILABLE:
+            logger.warning("gRPC protobuf modules not available, cannot connect")
+            return False
+            
         if self._connected:
             return True
 
         try:
-            edge_address = getattr(settings, 'EDGE_GRPC_ADDRESS', 'localhost:50051')
-            use_tls = getattr(settings, 'GRPC_USE_TLS', False)
+            edge_address = await config_service.get('edge_grpc_address', 'localhost:50051')
+            use_tls = await config_service.get('grpc_use_tls', False)
             
             logger.info(f"Connecting to edge service at {edge_address}")
 
             if use_tls:
-                cert_path = getattr(settings, 'GRPC_CERT_PATH', None)
+                cert_path = await config_service.get('grpc_cert_path', None)
                 if cert_path:
                     with open(cert_path, 'rb') as f:
                         cert_data = f.read()
@@ -154,7 +180,7 @@ class MediaGrpcClient:
 
             await self._stream.write(message)
             
-            timeout = getattr(settings, 'GRPC_TIMEOUT_SEC', 30)
+            timeout = await config_service.get('grpc_timeout_sec', 30)
             try:
                 return await asyncio.wait_for(response_future, timeout=timeout)
             except asyncio.TimeoutError:
@@ -260,7 +286,7 @@ class MediaGrpcClient:
             return None
 
         try:
-            timeout = getattr(settings, 'GRPC_TIMEOUT_SEC', 30)
+            timeout = await config_service.get('grpc_timeout_sec', 30)
             return await self._stub.WebRTCOperations(
                 message,
                 metadata=(('peer_id', self.peer_id),),

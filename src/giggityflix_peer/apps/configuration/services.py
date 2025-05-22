@@ -221,6 +221,55 @@ def ensure_defaults() -> List[str]:
             'is_env_overridable': True,
             'env_variable': 'GIGGITYFLIX_GRPC_TIMEOUT_SEC'
         },
+        {
+            'key': 'grpc_cert_path',
+            'default_value': '',
+            'value_type': Configuration.TYPE_STRING,
+            'description': 'Path to TLS certificate file for gRPC',
+            'is_env_overridable': True,
+            'env_variable': 'GIGGITYFLIX_GRPC_CERT_PATH'
+        },
+        # WebRTC configurations
+        {
+            'key': 'webrtc_stun_servers',
+            'default_value': 'stun:stun.l.google.com:19302',
+            'value_type': Configuration.TYPE_LIST,
+            'description': 'STUN servers for WebRTC NAT traversal',
+            'is_env_overridable': True,
+            'env_variable': 'GIGGITYFLIX_WEBRTC_STUN_SERVERS'
+        },
+        {
+            'key': 'webrtc_turn_servers',
+            'default_value': '',
+            'value_type': Configuration.TYPE_LIST,
+            'description': 'TURN servers for WebRTC relay',
+            'is_env_overridable': True,
+            'env_variable': 'GIGGITYFLIX_WEBRTC_TURN_SERVERS'
+        },
+        {
+            'key': 'webrtc_turn_username',
+            'default_value': '',
+            'value_type': Configuration.TYPE_STRING,
+            'description': 'Username for TURN server authentication',
+            'is_env_overridable': True,
+            'env_variable': 'GIGGITYFLIX_WEBRTC_TURN_USERNAME'
+        },
+        {
+            'key': 'webrtc_turn_password',
+            'default_value': '',
+            'value_type': Configuration.TYPE_STRING,
+            'description': 'Password for TURN server authentication',
+            'is_env_overridable': True,
+            'env_variable': 'GIGGITYFLIX_WEBRTC_TURN_PASSWORD'
+        },
+        {
+            'key': 'stream_inactive_timeout',
+            'default_value': '300',
+            'value_type': Configuration.TYPE_INTEGER,
+            'description': 'Timeout in seconds for inactive streaming sessions',
+            'is_env_overridable': True,
+            'env_variable': 'GIGGITYFLIX_STREAM_INACTIVE_TIMEOUT'
+        },
         # System configurations
         {
             'key': 'peer_id',

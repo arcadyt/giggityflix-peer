@@ -7,7 +7,7 @@ from typing import Dict, Optional, Tuple
 
 from aiortc import RTCConfiguration, RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.media import MediaPlayer, MediaRelay
-from django.conf import settings
+from giggityflix_peer.apps.configuration import services as config_service
 
 from ..domain.models import Media
 from ..infrastructure.repositories import get_media_repository
@@ -30,7 +30,7 @@ class StreamSession:
 
     async def create_offer(self) -> RTCSessionDescription:
         """Create WebRTC offer for this session."""
-        self.peer_connection = RTCPeerConnection(self._get_rtc_config())
+        self.peer_connection = RTCPeerConnection(await self._get_rtc_config())
 
         @self.peer_connection.on("connectionstatechange")
         async def on_connectionstatechange():
@@ -77,10 +77,10 @@ class StreamSession:
             self.player.stop()
             self.player = None
 
-    def _get_rtc_config(self) -> RTCConfiguration:
+    async def _get_rtc_config(self) -> RTCConfiguration:
         """Get WebRTC configuration."""
-        stun_servers = getattr(settings, 'WEBRTC_STUN_SERVERS', ['stun:stun.l.google.com:19302'])
-        turn_servers = getattr(settings, 'WEBRTC_TURN_SERVERS', [])
+        stun_servers = await config_service.get('webrtc_stun_servers', ['stun:stun.l.google.com:19302'])
+        turn_servers = await config_service.get('webrtc_turn_servers', [])
 
         ice_servers = []
 
@@ -91,8 +91,8 @@ class StreamSession:
         # Add TURN servers
         for server in turn_servers:
             ice_server = {"urls": server}
-            turn_username = getattr(settings, 'WEBRTC_TURN_USERNAME', None)
-            turn_password = getattr(settings, 'WEBRTC_TURN_PASSWORD', None)
+            turn_username = await config_service.get('webrtc_turn_username', None)
+            turn_password = await config_service.get('webrtc_turn_password', None)
             
             if turn_username:
                 ice_server["username"] = turn_username
@@ -204,7 +204,7 @@ class StreamService:
 
     async def _cleanup_sessions(self) -> None:
         """Periodically clean up inactive sessions."""
-        inactive_timeout = getattr(settings, 'STREAM_INACTIVE_TIMEOUT', 300)  # 5 minutes
+        inactive_timeout = await config_service.get('stream_inactive_timeout', 300)  # 5 minutes
 
         while not self._stop_event.is_set():
             try:

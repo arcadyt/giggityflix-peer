@@ -3,16 +3,28 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from giggityflix_grpc_peer import (
-    EdgeMessage, PeerMessage,
-    file_operations, catalog, commons
-)
-
+from giggityflix_peer.apps.configuration import services as config_service
 from ...infrastructure.repositories import get_media_repository
-from ...application.screenshot_service import get_screenshot_service
 from ...domain.models import MediaStatus
 
 logger = logging.getLogger(__name__)
+
+# Try to import gRPC components, handle gracefully if missing
+try:
+    from giggityflix_grpc_peer import (
+        EdgeMessage, PeerMessage,
+        file_operations, catalog, commons
+    )
+    GRPC_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"gRPC protobuf modules not available: {e}")
+    GRPC_AVAILABLE = False
+    # Create dummy classes to prevent import errors
+    class EdgeMessage: pass
+    class PeerMessage: pass
+    class file_operations: pass
+    class catalog: pass
+    class commons: pass
 
 
 class MediaGrpcHandlers:
@@ -20,10 +32,23 @@ class MediaGrpcHandlers:
 
     def __init__(self):
         self.media_repository = get_media_repository()
-        self.screenshot_service = get_screenshot_service()
+        # Only import screenshot service if available to avoid circular imports
+        self.screenshot_service = None
 
-    async def handle_message(self, message: EdgeMessage) -> Optional[PeerMessage]:
+    async def handle_message(self, message) -> Optional:
         """Process message from edge using strategy pattern."""
+        if not GRPC_AVAILABLE:
+            logger.warning("gRPC not available, cannot handle message")
+            return None
+            
+        # Import screenshot service lazily to avoid circular imports
+        if self.screenshot_service is None:
+            try:
+                from ...application.screenshot_service import get_screenshot_service
+                self.screenshot_service = get_screenshot_service()
+            except ImportError:
+                logger.warning("Screenshot service not available")
+                
         logger.debug(f"Received message type: {message.WhichOneof('payload')}")
 
         if message.HasField('file_delete_request'):

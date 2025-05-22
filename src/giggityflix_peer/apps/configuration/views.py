@@ -34,30 +34,31 @@ class ConfigurationViewSet(mixins.ListModelMixin,
             queryset = queryset.filter(value_type=value_type)
         return queryset
     
-    # Override to disable create
     def create(self, request, *args, **kwargs):
+        """Explicitly disable configuration creation via API."""
         return Response(
-            {'error': 'Configuration creation via API not allowed. Use Django admin or management commands.'},
+            {'error': 'Configuration creation not allowed via API. Use Django admin or management commands.'},
             status=status.HTTP_405_METHOD_NOT_ALLOWED
         )
     
-    # Override to disable update
     def update(self, request, *args, **kwargs):
+        """Explicitly disable full updates - use value endpoint instead."""
         return Response(
             {'error': 'Use PATCH /configurations/{key}/value/ to update configuration values.'},
             status=status.HTTP_405_METHOD_NOT_ALLOWED
         )
     
     def partial_update(self, request, *args, **kwargs):
+        """Explicitly disable partial updates - use value endpoint instead."""
         return Response(
             {'error': 'Use PATCH /configurations/{key}/value/ to update configuration values.'},
             status=status.HTTP_405_METHOD_NOT_ALLOWED
         )
     
-    # Override to disable destroy
     def destroy(self, request, *args, **kwargs):
+        """Explicitly disable configuration deletion via API."""
         return Response(
-            {'error': 'Configuration deletion via API not allowed. Use Django admin or management commands.'},
+            {'error': 'Configuration deletion not allowed via API. Use Django admin or management commands.'},
             status=status.HTTP_405_METHOD_NOT_ALLOWED
         )
     
@@ -65,7 +66,10 @@ class ConfigurationViewSet(mixins.ListModelMixin,
     def value(self, request, key=None):
         """Update only the value field of a configuration."""
         instance = self.get_object()
-        serializer = ConfigurationValueSerializer(data=request.data)
+        serializer = ConfigurationValueSerializer(
+            data=request.data, 
+            context={'key': key}
+        )
         serializer.is_valid(raise_exception=True)
         
         # Use service to update value only

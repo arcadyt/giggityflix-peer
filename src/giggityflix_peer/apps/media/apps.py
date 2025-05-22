@@ -21,11 +21,14 @@ class MediaConfig(AppConfig):
         # Import signal handlers to register them
         from . import receivers  # noqa
         
-        # Ensure configuration app is ready first
+        # Verify configuration app is ready
         try:
             from giggityflix_peer.apps.configuration import services as config_service
             # Test configuration access to ensure it's ready
-            config_service.get('media_dirs', [])
-            logger.info("Media app initialized - configuration service ready")
+            # Don't actually call async functions here, just verify import works
+            logger.info("Media app ready - configuration service available")
         except Exception as e:
-            logger.warning(f"Media app initialized but configuration service not ready: {e}")
+            logger.warning(f"Media app ready but configuration service not available: {e}")
+
+        # Log that media app is properly configured for DI
+        logger.info("Media app initialized - services available for dependency injection")
