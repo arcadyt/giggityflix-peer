@@ -113,17 +113,11 @@ class MediaGrpcHandlers:
                 )
                 return PeerMessage(request_id=request_id, file_hash_response=response)
 
-            # Compute requested hashes
+            # Return existing hashes
             hashes = {}
             for hash_type in hash_types:
                 if hash_type in media.hashes:
                     hashes[hash_type] = media.hashes[hash_type]
-                else:
-                    # Compute hash using video file utils
-                    from ...video_file_utils import VideoReader
-                    # This would need proper implementation based on hash algorithm
-                    # For now, just return existing hashes
-                    pass
 
             response = file_operations.FileHashResponse(
                 catalog_id=catalog_id,
@@ -222,12 +216,26 @@ class MediaGrpcHandlers:
                 return None
 
             # Capture screenshots
-            screenshots = self.screenshot_service.capture_for_media(media.luid, quantity)
+            screenshots = await self.screenshot_service.capture_for_media(media.luid, quantity)
             
-            if screenshots:
-                # Upload logic would be implemented here
-                # For now, just log success
-                logger.info(f"Captured {len(screenshots)} screenshots for {catalog_id}")
+            if screenshots and upload_endpoint and upload_token:
+                # Extract screenshot data for upload
+                screenshot_data = []
+                for screenshot in screenshots:
+                    with open(screenshot.path, 'rb') as f:
+                        screenshot_data.append(f.read())
+                
+                # Upload screenshots
+                success = await self.screenshot_service.upload_screenshots(
+                    screenshot_data, upload_endpoint, upload_token
+                )
+                
+                if success:
+                    logger.info(f"Successfully captured and uploaded {len(screenshots)} screenshots for {catalog_id}")
+                else:
+                    logger.warning(f"Failed to upload screenshots for {catalog_id}")
+            else:
+                logger.info(f"Captured {len(screenshots)} screenshots for {catalog_id} (no upload requested)")
 
         except Exception as e:
             logger.error(f"Error processing screenshot request for {catalog_id}: {e}")

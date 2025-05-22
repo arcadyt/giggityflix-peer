@@ -163,37 +163,22 @@ def ensure_defaults() -> List[str]:
     """
     created_keys = []
     defaults = [
+        # Media configurations
         {
-            'key': 'scraping_paths',
+            'key': 'media_dirs',
             'default_value': '',
             'value_type': Configuration.TYPE_LIST,
-            'description': 'List of paths to scan for media files',
+            'description': 'List of directories to scan for media files',
             'is_env_overridable': True,
-            'env_variable': 'GIGGITYFLIX_SCRAPING_PATHS'
+            'env_variable': 'GIGGITYFLIX_MEDIA_DIRS'
         },
         {
-            'key': 'api_port',
-            'default_value': '8000',
-            'value_type': Configuration.TYPE_INTEGER,
-            'description': 'Port for the management REST API',
+            'key': 'media_extensions',
+            'default_value': '.mp4,.mkv,.avi,.mov,.mp3,.flac,.ogg,.wav',
+            'value_type': Configuration.TYPE_LIST,
+            'description': 'File extensions to include in media scanning',
             'is_env_overridable': True,
-            'env_variable': 'GIGGITYFLIX_API_PORT'
-        },
-        {
-            'key': 'log_level',
-            'default_value': 'INFO',
-            'value_type': Configuration.TYPE_STRING,
-            'description': 'Logging level for the application',
-            'is_env_overridable': True,
-            'env_variable': 'GIGGITYFLIX_LOG_LEVEL'
-        },
-        {
-            'key': 'db_path',
-            'default_value': 'db.sqlite3',
-            'value_type': Configuration.TYPE_STRING,
-            'description': 'Path to SQLite database file',
-            'is_env_overridable': True,
-            'env_variable': 'GIGGITYFLIX_DB_PATH'
+            'env_variable': 'GIGGITYFLIX_MEDIA_EXTENSIONS'
         },
         {
             'key': 'scan_interval_minutes',
@@ -202,6 +187,56 @@ def ensure_defaults() -> List[str]:
             'description': 'Interval in minutes between media scans',
             'is_env_overridable': True,
             'env_variable': 'GIGGITYFLIX_SCAN_INTERVAL'
+        },
+        {
+            'key': 'data_dir',
+            'default_value': '/tmp/giggityflix',
+            'value_type': Configuration.TYPE_STRING,
+            'description': 'Directory for application data storage',
+            'is_env_overridable': True,
+            'env_variable': 'GIGGITYFLIX_DATA_DIR'
+        },
+        # gRPC configurations
+        {
+            'key': 'edge_grpc_address',
+            'default_value': 'localhost:50051',
+            'value_type': Configuration.TYPE_STRING,
+            'description': 'Address of the Edge gRPC service',
+            'is_env_overridable': True,
+            'env_variable': 'GIGGITYFLIX_EDGE_GRPC_ADDRESS'
+        },
+        {
+            'key': 'grpc_use_tls',
+            'default_value': 'false',
+            'value_type': Configuration.TYPE_BOOLEAN,
+            'description': 'Whether to use TLS for gRPC connections',
+            'is_env_overridable': True,
+            'env_variable': 'GIGGITYFLIX_GRPC_USE_TLS'
+        },
+        {
+            'key': 'grpc_timeout_sec',
+            'default_value': '30',
+            'value_type': Configuration.TYPE_INTEGER,
+            'description': 'Timeout in seconds for gRPC operations',
+            'is_env_overridable': True,
+            'env_variable': 'GIGGITYFLIX_GRPC_TIMEOUT_SEC'
+        },
+        # System configurations
+        {
+            'key': 'peer_id',
+            'default_value': '',
+            'value_type': Configuration.TYPE_STRING,
+            'description': 'Unique identifier for this peer (auto-generated if empty)',
+            'is_env_overridable': True,
+            'env_variable': 'GIGGITYFLIX_PEER_ID'
+        },
+        {
+            'key': 'log_level',
+            'default_value': 'INFO',
+            'value_type': Configuration.TYPE_STRING,
+            'description': 'Logging level for the application',
+            'is_env_overridable': True,
+            'env_variable': 'GIGGITYFLIX_LOG_LEVEL'
         },
         {
             'key': 'enable_auto_discovery',

@@ -11,7 +11,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -98,26 +97,6 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
 }
-
-# Media scanning configuration
-MEDIA_DIRECTORIES = []  # Configure via Django admin or environment
-MEDIA_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.mp3', '.flac', '.ogg', '.wav']
-
-# gRPC Configuration
-EDGE_GRPC_ADDRESS = 'localhost:50051'
-GRPC_USE_TLS = False
-GRPC_CERT_PATH = None
-GRPC_TIMEOUT_SEC = 30
-
-# WebRTC Configuration
-WEBRTC_STUN_SERVERS = ['stun:stun.l.google.com:19302']
-WEBRTC_TURN_SERVERS = []
-WEBRTC_TURN_USERNAME = None
-WEBRTC_TURN_PASSWORD = None
-
-# Peer Configuration
-PEER_ID = None  # Will be auto-generated if not set
-STREAM_INACTIVE_TIMEOUT = 300  # 5 minutes
 
 # Logging
 LOGGING = {

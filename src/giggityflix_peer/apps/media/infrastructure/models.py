@@ -9,7 +9,7 @@ class MediaFile(models.Model):
     luid = models.CharField(max_length=64, primary_key=True)
     catalog_id = models.CharField(max_length=64, null=True, blank=True, db_index=True)
     path = models.TextField()
-    relative_path = models.TextField(null=False, blank=False)
+    relative_path = models.TextField(null=True, blank=True)
     size_bytes = models.BigIntegerField()
     media_type = models.CharField(
         max_length=20,

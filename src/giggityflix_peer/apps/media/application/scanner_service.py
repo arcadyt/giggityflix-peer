@@ -8,7 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
-from django.conf import settings
+from giggityflix_peer.core.resource_pool.decorators import io_bound
+from giggityflix_peer.apps.configuration import services as config_service
 
 from ..domain.models import Media, MediaStatus, MediaType
 from ..infrastructure.repositories import get_media_repository
@@ -24,10 +25,7 @@ class MediaScanner:
         self.media_repository = get_media_repository()
         self._scanning = False
         self._stop_event = asyncio.Event()
-        self._observer = None
 
-
-    # fixme code duplication
     def get_media_type(self, file_path: Path) -> MediaType:
         """Determine media type based on file extension."""
         ext = file_path.suffix.lower()
@@ -42,6 +40,7 @@ class MediaScanner:
 
         return MediaType.UNSUPPORTED
 
+    @io_bound(param_name='file_path')
     async def calculate_file_hash(self, file_path: Path, algorithm: str) -> str:
         """Calculate hash for a file using specified algorithm."""
         hash_obj = hashlib.new(algorithm)

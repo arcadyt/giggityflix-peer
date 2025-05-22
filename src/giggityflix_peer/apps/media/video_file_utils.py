@@ -1,3 +1,4 @@
+"""Utilities for video file processing and metadata extraction."""
 import logging
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
@@ -10,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class VideoMetadata:
-    """Video file metadata container"""
+    """Video file metadata container."""
     height: int
     width: int
     frame_rate: float
@@ -20,17 +21,17 @@ class VideoMetadata:
 
 
 class VideoReader:
-    """Handles video file reading operations"""
+    """Handles video file reading operations."""
 
     @staticmethod
     def get_property(video: cv2.VideoCapture, prop_id, default=None):
-        """Get property value from video capture object"""
+        """Get property value from video capture object."""
         value = video.get(prop_id)
         return value if value > 0 else default
 
     @staticmethod
     def extract_metadata(video_path: str) -> Optional[VideoMetadata]:
-        """Extract metadata from video file"""
+        """Extract metadata from video file."""
         try:
             video = cv2.VideoCapture(video_path)
             if not video.isOpened():
@@ -57,7 +58,7 @@ class VideoReader:
 
     @staticmethod
     def _decode_fourcc(fourcc_int: int) -> Optional[str]:
-        """Decode FourCC codec identifier"""
+        """Decode FourCC codec identifier."""
         if fourcc_int == 0:
             return None
 
@@ -68,11 +69,11 @@ class VideoReader:
 
 
 class FrameQualityCalculator:
-    """Calculates quality metrics for video frames"""
+    """Calculates quality metrics for video frames."""
 
     @staticmethod
     def calculate_quality_score(frame_data: bytes) -> float:
-        """Calculate Laplacian variance score for a frame"""
+        """Calculate Laplacian variance score for a frame."""
         np_array = np.frombuffer(frame_data, dtype=np.uint8)
         frame = cv2.imdecode(np_array, cv2.IMREAD_COLOR)
         if frame is None:
@@ -83,11 +84,11 @@ class FrameQualityCalculator:
 
 
 class FramePositionCalculator:
-    """Calculates optimal frame positions for extraction"""
+    """Calculates optimal frame positions for extraction."""
 
     @staticmethod
     def calculate_frame_positions(start_frame: int, usable_frames: int, quantity: int) -> List[int]:
-        """Calculate evenly distributed frame positions"""
+        """Calculate evenly distributed frame positions."""
         if quantity <= 0:
             return []
 
@@ -104,7 +105,7 @@ class FramePositionCalculator:
 
     @staticmethod
     def calculate_quality_radius(positions: List[int], frame_rate: float) -> int:
-        """Determine optimal search radius based on positions and frame rate"""
+        """Determine optimal search radius based on positions and frame rate."""
         distances = [positions[i + 1] - positions[i] for i in range(len(positions) - 1)] if len(positions) > 1 else []
         min_distance = min(distances) if distances else float('inf')
 
@@ -112,7 +113,7 @@ class FramePositionCalculator:
 
     @staticmethod
     def get_valid_frame_range(target_pos: int, radius: int, total_frames: int) -> Tuple[int, int]:
-        """Calculate valid frame range within video bounds"""
+        """Calculate valid frame range within video bounds."""
         start_pos = max(0, target_pos - radius)
         end_pos = min(total_frames - 1, target_pos + radius)
         return start_pos, end_pos

@@ -7,16 +7,18 @@ from .models import Configuration
 from .serializers import ConfigurationSerializer, ConfigurationValueSerializer
 from . import services
 
-class ConfigurationViewSet(viewsets.ModelViewSet):
+
+class ConfigurationViewSet(mixins.ListModelMixin,
+                          mixins.RetrieveModelMixin,
+                          viewsets.GenericViewSet):
     """
     API endpoints for configuration management.
     
+    Only allows reading configurations and patching values.
+    No creation or deletion of configuration keys via API.
+    
     list:        GET /configurations/
     retrieve:    GET /configurations/{key}/
-    create:      POST /configurations/
-    update:      PUT /configurations/{key}/
-    partial:     PATCH /configurations/{key}/
-    delete:      DELETE /configurations/{key}/
     value:       PATCH /configurations/{key}/value/
     dict:        GET /configurations/dict/
     """
@@ -32,76 +34,36 @@ class ConfigurationViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(value_type=value_type)
         return queryset
     
-    # Override create to use service
+    # Override to disable create
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        # Extract validated data
-        data = serializer.validated_data
-        key = data.get('key')
-        
-        # Use service to create
-        success = services.set(
-            key=key,
-            value=data.get('value'),
-            value_type=data.get('value_type'),
-            description=data.get('description'),
-            is_env_overridable=data.get('is_env_overridable'),
-            env_variable=data.get('env_variable'),
-            default_value=data.get('default_value')
+        return Response(
+            {'error': 'Configuration creation via API not allowed. Use Django admin or management commands.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
         )
-        
-        if success:
-            # Get the created object
-            instance = get_object_or_404(Configuration, key=key)
-            serializer = self.get_serializer(instance)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        
-        return Response({'error': 'Failed to create configuration'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    # Override update to use service
+    # Override to disable update
     def update(self, request, *args, **kwargs):
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        
-        # Extract validated data
-        data = serializer.validated_data
-        
-        # Use service to update
-        success = services.set(
-            key=instance.key,
-            value=data.get('value', instance.value),
-            value_type=data.get('value_type', instance.value_type),
-            description=data.get('description', instance.description),
-            is_env_overridable=data.get('is_env_overridable', instance.is_env_overridable),
-            env_variable=data.get('env_variable', instance.env_variable),
-            default_value=data.get('default_value', instance.default_value)
+        return Response(
+            {'error': 'Use PATCH /configurations/{key}/value/ to update configuration values.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
         )
-        
-        if success:
-            # Get the updated object
-            instance = get_object_or_404(Configuration, key=instance.key)
-            serializer = self.get_serializer(instance)
-            return Response(serializer.data)
-        
-        return Response({'error': 'Failed to update configuration'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    # Override destroy to use service
+    def partial_update(self, request, *args, **kwargs):
+        return Response(
+            {'error': 'Use PATCH /configurations/{key}/value/ to update configuration values.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+    
+    # Override to disable destroy
     def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        success = services.delete(instance.key)
-        
-        if success:
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        
-        return Response({'error': 'Failed to delete configuration'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {'error': 'Configuration deletion via API not allowed. Use Django admin or management commands.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
     
     @action(detail=True, methods=['patch'])
     def value(self, request, key=None):
-        """Update only the value field."""
+        """Update only the value field of a configuration."""
         instance = self.get_object()
         serializer = ConfigurationValueSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -110,11 +72,17 @@ class ConfigurationViewSet(viewsets.ModelViewSet):
         success = services.set(key, serializer.validated_data.get('value'))
         
         if success:
-            return Response(status=status.HTTP_200_OK)
+            # Return updated configuration
+            updated_instance = get_object_or_404(Configuration, key=key)
+            response_serializer = self.get_serializer(updated_instance)
+            return Response(response_serializer.data)
         
-        return Response({'error': 'Failed to update value'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(
+            {'error': 'Failed to update configuration value'}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
     
     @action(detail=False, methods=['get'])
     def dict(self, request):
-        """Return all configs as plain dict {key: typed_value}."""
+        """Return all configurations as plain dictionary {key: typed_value}."""
         return Response(services.get_all())
