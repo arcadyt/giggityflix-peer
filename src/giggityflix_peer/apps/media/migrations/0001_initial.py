@@ -28,8 +28,6 @@ class Migration(migrations.Migration):
                         choices=[
                             ("video", "VIDEO"),
                             ("audio", "AUDIO"),
-                            ("image", "IMAGE"),
-                            ("unknown", "UNKNOWN"),
                         ],
                         default="unknown",
                         max_length=20,

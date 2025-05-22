@@ -17,7 +17,7 @@ from giggityflix_peer.old_services.config_service import config_service
 
 logger = logging.getLogger(__name__)
 
-
+# fixme code duplication giggityflix_peer.apps.media.application.scanner_service.MediaScanner.get_media_type
 def get_media_type(file_path: Path) -> MediaType:
     """Determine the media type based on file extension."""
     ext = file_path.suffix.lower()
@@ -30,11 +30,7 @@ def get_media_type(file_path: Path) -> MediaType:
     if ext in ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.wma']:
         return MediaType.AUDIO
 
-    # Image extensions
-    if ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg']:
-        return MediaType.IMAGE
-
-    return MediaType.UNKNOWN
+    return MediaType.UNSUPPORTED
 
 
 @io_bound(param_name='file_path')

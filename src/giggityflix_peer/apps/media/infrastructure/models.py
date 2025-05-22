@@ -9,12 +9,12 @@ class MediaFile(models.Model):
     luid = models.CharField(max_length=64, primary_key=True)
     catalog_id = models.CharField(max_length=64, null=True, blank=True, db_index=True)
     path = models.TextField()
-    relative_path = models.TextField(null=True, blank=True)
+    relative_path = models.TextField(null=False, blank=False)
     size_bytes = models.BigIntegerField()
     media_type = models.CharField(
         max_length=20,
         choices=[(t.value, t.name) for t in MediaType],
-        default=MediaType.UNKNOWN.value
+        null=False
     )
     status = models.CharField(
         max_length=20,
@@ -46,7 +46,9 @@ class MediaFile(models.Model):
         indexes = [
             models.Index(fields=['media_type']),
             models.Index(fields=['status']),
+            models.Index(fields=['catalog_id']),
         ]
+        app_label = 'media'
         
     def __str__(self):
         return f"{self.luid} - {self.path}"
@@ -64,6 +66,7 @@ class MediaHash(models.Model):
     
     class Meta:
         unique_together = ('media', 'algorithm')
+        app_label = 'media'
         
     def __str__(self):
         return f"{self.algorithm} hash for {self.media.luid}"
@@ -82,6 +85,9 @@ class Screenshot(models.Model):
     width = models.IntegerField()
     height = models.IntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        app_label = 'media'
     
     def __str__(self):
         return f"Screenshot {self.id} for {self.media.luid}"

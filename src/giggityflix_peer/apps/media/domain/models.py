@@ -9,9 +9,7 @@ class MediaType(str, Enum):
     """Types of media files."""
     VIDEO = "video"
     AUDIO = "audio"
-    IMAGE = "image"
-    UNKNOWN = "unknown"
-
+    UNSUPPORTED = "unsupported"
 
 class MediaStatus(str, Enum):
     """Status of a media file in the system."""

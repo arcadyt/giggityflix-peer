@@ -61,13 +61,6 @@ class TestMediaScanner:
         assert get_media_type(Path("test.wav")) == MediaType.AUDIO
         assert get_media_type(Path("test.flac")) == MediaType.AUDIO
 
-        # Test image extensions
-        assert get_media_type(Path("test.jpg")) == MediaType.IMAGE
-        assert get_media_type(Path("test.png")) == MediaType.IMAGE
-        assert get_media_type(Path("test.gif")) == MediaType.IMAGE
-
-        # Test unknown extension
-        assert get_media_type(Path("test.txt")) == MediaType.UNKNOWN
 
     @pytest.mark.asyncio
     async def test_scan_empty_directory(self, scanner, test_media_dir):

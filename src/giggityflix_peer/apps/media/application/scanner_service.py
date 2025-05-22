@@ -25,7 +25,9 @@ class MediaScanner:
         self._scanning = False
         self._stop_event = asyncio.Event()
         self._observer = None
-    
+
+
+    # fixme code duplication
     def get_media_type(self, file_path: Path) -> MediaType:
         """Determine media type based on file extension."""
         ext = file_path.suffix.lower()
@@ -37,13 +39,9 @@ class MediaScanner:
         # Audio extensions
         if ext in ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.wma']:
             return MediaType.AUDIO
-        
-        # Image extensions
-        if ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg']:
-            return MediaType.IMAGE
-        
-        return MediaType.UNKNOWN
-    
+
+        return MediaType.UNSUPPORTED
+
     async def calculate_file_hash(self, file_path: Path, algorithm: str) -> str:
         """Calculate hash for a file using specified algorithm."""
         hash_obj = hashlib.new(algorithm)
